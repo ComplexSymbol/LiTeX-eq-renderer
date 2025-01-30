@@ -5,7 +5,6 @@ def genRender(eq, exp = False):
   begWth = "" if exp == False else "^"
 
   while i < len(eq):
-    print(f"{' ' * (i + len(str(i)) + 31)}_")
     print(f"Parsing char: \'{eq[i]}\' at index {i} of {eq}")
     
     if eq[i].isdigit() or eq[i] in ("+", "-", "*", "/"):
@@ -61,6 +60,7 @@ def genRender(eq, exp = False):
         i += j
           
     i += 1
+    print(f"{' ' * (i + len(str(i)) + 31)}V")
 
   print(f"Finished parsing {eq}")
   return render
@@ -74,18 +74,16 @@ def readGlyph(g):
       line = glyphs[i].replace("\n", "")
 
       if line.endswith(":") and line.startswith(g):
-        line = line.replace(g, "").replace(":", "")
-
+        line = line.replace(g, "", 1).replace(":", "")
         width = 6 if len(line) == 0 else int(line.rpartition("x")[0])
         height = 10 if len(line) == 0 else int(line.rpartition("x")[2])
-
         glyph = [[0] * width for _ in range(height)]
 
         for y in range(height):
           i += 1
 
           line = [
-            1 if digit == "1" else 0 for digit in bin(int(glyphs[i]))[2:]
+            True if digit == "1" else False for digit in bin(int(glyphs[i]))[2:]
           ]
           line = [0] * (width - len(line)) + line
 
@@ -102,7 +100,7 @@ def add2dArrays(a, b, overlap = -1, relHt = -1):
     relHt = len(a)
   
   newArray = [
-    [0] * (len(a[0]) + len(b[0]))
+    [False] * (len(a[0]) + len(b[0]))
       for _ in range(
         max(len(b), len(a)) if overlap == -1 else (relHt + len(b) - overlap)
       )
@@ -118,7 +116,7 @@ def merge2dArrays(a, b, Mx, My):
   My = len(a) - My
   for y in range(len(a)):
     toMerge = (
-      [0] * len(a[0])
+      [False] * len(a[0])
       if not (y <= My and y > My - len(b))
       else ([0] * Mx) + b[y - My] + ([0] * (len(a[0]) - len(b[0]) - Mx))
     )
@@ -128,14 +126,16 @@ def merge2dArrays(a, b, Mx, My):
 
 
 def print2dArray(arr):
+  arr = [[1 if b == True else 0 for b in arr[r]] for r in range(len(arr))]
+  
   for y in range(len(arr)):
     print(f"{' ' * (len(str(len(arr))) - len(str(y)))}{y}: {arr[y]}", end=",\n")
 
-  print(f"Dimensions: {len(arr)}x{len(arr[0])}")
+  print(f"Dimensions: {len(arr[0])}x{len(arr)}")
   print("--PRERENDER-- **NOT TO SCALE**")
   for y in range(len(arr)):
     for x in range(len(arr[0])):
-      print("█" if arr[y][x] == 1 else " ", end="")
+      print("█" * 2 if arr[y][x] == 1 else " " * 2, end="")
     print()
   print("--PRERENDER--")
   
