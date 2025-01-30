@@ -1,25 +1,27 @@
-def genRender(eq):
+def genRender(eq, exp = False):
   i = 0
   mode = ""
   render = [[]]
+  begWth = "" if exp == False else "^"
 
   while i < len(eq):
-    print(f"\nParsing char: \'{eq[i]}\' at index {i} of {eq}")
+    print(f"{' ' * (i + len(str(i)) + 31)}_")
+    print(f"Parsing char: \'{eq[i]}\' at index {i} of {eq}")
     
     if eq[i].isdigit() or eq[i] in ("+", "-", "*", "/"):
       print(f"  Appending digit \'{eq[i]}\'")
-      render = add2dArrays(render, readGlyph(eq[i]))
+      render = add2dArrays(render, readGlyph(begWth + eq[i]))
 
     elif eq[i] == "(":
       print(f"  Found parenthesis")
       for j in range(1, len(eq[i:]) + 1):
         if eq[i:][:j].count("(") == eq[i:][:j].count(")"):
           print(f"    Found end of parenthesis at index {i + j} [contents: {eq[i:][:j]}]")
-          print(f"    Recursing contents {eq[i:][:j][1:][:-1]}")
+          print(f"    Recursing contents {eq[i+1:][:j-2]}")
           
-          render = add2dArrays(render, readGlyph("("))
-          render = add2dArrays(render, genRender(eq[i:][:j][1:][:-1]))
-          render = add2dArrays(render, readGlyph(")"))
+          render = add2dArrays(render, readGlyph(begWth + "("))
+          render = add2dArrays(render, genRender(eq[i+1:][:j-2], exp))
+          render = add2dArrays(render, readGlyph(begWth + ")"))
           
           print(f"    Setting index i to {i + j - 1}")
           i += j - 1
@@ -33,7 +35,20 @@ def genRender(eq):
       print(f"Found power at index {i}")
       
       if eq[i] == '{':
-        
+        print(f"  Found exponent brace")
+        for j in range(1, len(eq[i:]) + 1):
+          if eq[i:][:j].count("{") == eq[i:][:j].count("}"):
+            print(f"    Found end of exponent brace at index {i + j} [contents: {eq[i:][:j]}]")
+            print(f"    Recursing contents {eq[i+1:][:j-2]}")
+            
+            render = add2dArrays(render, genRender(eq[i+1:][:j-2], True), 3, len(readGlyph(eq[i - 2])))
+            
+            print(f"    Setting index i to {i + j - 1}")
+            i += j - 1
+            break
+
+        if j == len(eq[i:]):
+          raise Exception("Unfinished exponential brace")
 
       elif eq[i].isdigit():
         for j in range(0, len(eq[i:])):
@@ -46,7 +61,7 @@ def genRender(eq):
         i += j
           
     i += 1
-  
+
   print(f"Finished parsing {eq}")
   return render
 
@@ -124,5 +139,6 @@ def print2dArray(arr):
   print("--PRERENDER--")
   
 print2dArray(genRender("1+(2^3-4)^5+6^{7^7}"))
+print2dArray(add2dArrays(readGlyph("^7"), readGlyph("^7"), 3))
 
 
