@@ -41,7 +41,7 @@ def genRender(eq, exp = False):
             print(f"    Found end of exponent brace at index {i + j} [contents: {eq[i:][:j]}]")
             print(f"    Recursing contents {eq[i+1:][:j-2]}")
             
-            render = add2dArrays(render, genRender(eq[i+1:][:j-2], True), 3, len(readGlyph(eq[i - 2])))
+            render = add2dArrays(render, genRender(eq[i+1:][:j-2], True), 4, len(readGlyph(eq[i - 2])))
             
             print(f"    Setting index i to {i + j - 1}")
             i += j - 1
@@ -54,7 +54,7 @@ def genRender(eq, exp = False):
         for j in range(0, len(eq[i:])):
           if (eq[i:][j].isalnum()):
             print(f"  Appending power: {eq[i:][j]} at index {i + j}")
-            render = add2dArrays(render, readGlyph("^" + eq[i:][j]), 3, -1 if exp else len(readGlyph(eq[i - 2])) )
+            render = add2dArrays(render, readGlyph(begWth + "^" + eq[i:][j]), 4, -1 if exp else len(readGlyph(eq[i - 2])) )
           else:
             j -= 1
             break
@@ -131,6 +131,7 @@ def print2dArray(arr):
   for y in range(len(arr)):
     print(f"{' ' * (len(str(len(arr))) - len(str(y)))}{y}: {arr[y]}", end=",\n")
 
+  print(f"Dimensions: {len(arr)}x{len(arr[0])}")
   print("--PRERENDER-- **NOT TO SCALE**")
   for y in range(len(arr)):
     for x in range(len(arr[0])):
@@ -138,6 +139,6 @@ def print2dArray(arr):
     print()
   print("--PRERENDER--")
   
-print2dArray(genRender("1+(2^3-4)^5+6^{7^7}"))
+print2dArray(genRender("1+(2^3-4)^5*6^{(7^8/9)}"))
 
 
