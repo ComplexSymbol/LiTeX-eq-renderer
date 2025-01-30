@@ -54,7 +54,7 @@ def genRender(eq, exp = False):
         for j in range(0, len(eq[i:])):
           if (eq[i:][j].isalnum()):
             print(f"  Appending power: {eq[i:][j]} at index {i + j}")
-            render = add2dArrays(render, readGlyph("^" + eq[i:][j]), 3, len(readGlyph(eq[i - 2])))
+            render = add2dArrays(render, readGlyph("^" + eq[i:][j]), 3, -1 if exp else len(readGlyph(eq[i - 2])) )
           else:
             j -= 1
             break
@@ -139,6 +139,5 @@ def print2dArray(arr):
   print("--PRERENDER--")
   
 print2dArray(genRender("1+(2^3-4)^5+6^{7^7}"))
-print2dArray(add2dArrays(readGlyph("^7"), readGlyph("^7"), 3))
 
 
