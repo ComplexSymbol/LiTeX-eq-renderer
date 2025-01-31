@@ -51,8 +51,8 @@ def genRender(eq, exp = False):
             print(f"    Recursing contents {eq[i+1:][:j-2]}")
             
             contents = genRender(eq[i+1:][:j-2], True)
-            render = add2dArrays(render, contents, 4, lastHeight)
-            lastHeight =  lastHeight + len(contents) - 4
+            render = add2dArrays(render, contents, 3 if exp else 4, lastHeight)
+            lastHeight =  lastHeight + len(contents) - (3 if exp else 4)
             
             print(f"    Setting index i to {i + j - 1}")
             i += j - 1
@@ -66,14 +66,14 @@ def genRender(eq, exp = False):
           if (eq[i:][j].isalnum()):
             print(f"  Appending power: {eq[i:][j]} at index {i + j}")
             thisExp = readGlyph("^" + eq[i:][j])
-            render = add2dArrays(render, thisExp, 4, -1 if exp else lastHeight)
-            lastHeight = (max(len(render), len(thisExp)) if exp else lastHeight) + len(thisExp) - 4
+            render = add2dArrays(render, thisExp, (3 if exp else 4), -1 if exp else lastHeight)
           else:
             j -= 1
             break
+
+        lastHeight = (max(len(render), len(thisExp)) if exp else lastHeight) + len(thisExp) - (3 if exp else 4)
         i += j
     
-    print2dArray(render)
     i += 1
     if i < len(eq):
       print(f"{' ' * (i + len(str(i)) + 31)}V")
@@ -162,6 +162,6 @@ def print2dArray(arr):
     print()
   print("--PRERENDER--")
   
-print2dArray(genRender("1+(2^{3+4^{5*6}/7}+8)^9-10"))
+print2dArray(genRender("1+(2^{3+4^{5*6/7}}+8)^9-10^11"))
 
 
