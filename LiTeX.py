@@ -52,12 +52,12 @@ def genRender(eq, exp = False):
             
             contents = genRender(eq[i+1:][:j-2], True)
             render = add2dArrays(render, contents, 3 if exp else 4, lastHeight)
-            lastHeight =  lastHeight + len(contents) - (3 if exp else 4)
             
             print(f"    Setting index i to {i + j - 1}")
             i += j - 1
             break
-
+          
+        lastHeight =  lastHeight + len(contents) - (3 if exp else 4)
         if j == len(eq[i:]):
           raise Exception("Unfinished exponential brace")
 
@@ -66,7 +66,7 @@ def genRender(eq, exp = False):
           if (eq[i:][j].isalnum()):
             print(f"  Appending power: {eq[i:][j]} at index {i + j}")
             thisExp = readGlyph("^" + eq[i:][j])
-            render = add2dArrays(render, thisExp, (3 if exp else 4), -1 if exp else lastHeight)
+            render = add2dArrays(render, thisExp, (3 if exp else 4), lastHeight)
           else:
             j -= 1
             break
@@ -74,6 +74,7 @@ def genRender(eq, exp = False):
         lastHeight = (max(len(render), len(thisExp)) if exp else lastHeight) + len(thisExp) - (3 if exp else 4)
         i += j
     
+    print2dArray(render)
     i += 1
     if i < len(eq):
       print(f"{' ' * (i + len(str(i)) + 31)}V")
@@ -162,6 +163,6 @@ def print2dArray(arr):
     print()
   print("--PRERENDER--")
   
-print2dArray(genRender("1+(2^{3+4^{5*6/7}}+8)^9-10^11"))
+print2dArray(genRender("2^{9^10}"))
 
 
