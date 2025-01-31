@@ -50,10 +50,9 @@ def genRender(eq, exp = False):
             print(f"    Found end of exponent brace at index {i + j} [contents: {eq[i:][:j]}]")
             print(f"    Recursing contents {eq[i+1:][:j-2]}")
             
-            prevChr = readGlyph(eq[i - 2])
             contents = genRender(eq[i+1:][:j-2], True)
-            render = add2dArrays(render, contents, 4, len(prevChr))
-            lastHeight =  len(prevChr) + len(contents) - 4
+            render = add2dArrays(render, contents, 4, lastHeight)
+            lastHeight =  lastHeight + len(contents) - 4
             
             print(f"    Setting index i to {i + j - 1}")
             i += j - 1
@@ -75,7 +74,6 @@ def genRender(eq, exp = False):
         i += j
     
     print2dArray(render)
-          
     i += 1
     if i < len(eq):
       print(f"{' ' * (i + len(str(i)) + 31)}V")
@@ -164,6 +162,6 @@ def print2dArray(arr):
     print()
   print("--PRERENDER--")
   
-print2dArray(genRender("1+(2^3-4)^5*6^{1/2}"))
+print2dArray(genRender("1+(2^{3+4^{5*6}/7}+8)^9-10"))
 
 
