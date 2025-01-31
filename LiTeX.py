@@ -10,8 +10,9 @@ def genRender(eq, exp = False):
     
     if eq[i].isdigit() or eq[i] in ("+", "-", "*", "/"):
       print(f"  Appending digit \'{eq[i]}\'")
-      render = add2dArrays(render, readGlyph(begWth + eq[i]))
-      lastHeight = len(readGlyph(begWth + eq[i]))
+      char = readGlyph(begWth + eq[i])
+      render = add2dArrays(render, char)
+      lastHeight = len(char)
 
     elif eq[i] == "(":
       print(f"  Found parenthesis")
@@ -23,10 +24,13 @@ def genRender(eq, exp = False):
           contents = genRender(eq[i+1:][:j-2], exp)
           print(f"Adding {len(contents) - 10} to paren size")
           
-          render = add2dArrays(render, readGlyph(begWth + "(", -(len(contents) - 10)))
+          parenHeight = len(contents) - (7 if exp else 10)
+          rightParen = readGlyph(begWth + ")", parenHeight)
+          
+          render = add2dArrays(render, readGlyph(begWth + "(", -parenHeight))
           render = add2dArrays(render, contents)
-          render = add2dArrays(render, readGlyph(begWth + ")", len(contents) - 10))
-          lastHeight = len(readGlyph(begWth + ")", len(contents) - 10))
+          render = add2dArrays(render, rightParen)
+          lastHeight = len(rightParen)
           
           print(f"    Setting index i to {i + j - 1}")
           i += j - 1
@@ -46,8 +50,10 @@ def genRender(eq, exp = False):
             print(f"    Found end of exponent brace at index {i + j} [contents: {eq[i:][:j]}]")
             print(f"    Recursing contents {eq[i+1:][:j-2]}")
             
-            render = add2dArrays(render, genRender(eq[i+1:][:j-2], True), 4, len(readGlyph(eq[i - 2])))
-            lastHeight =  len(readGlyph(eq[i - 2])) + len(genRender(eq[i+1:][:j-2], True)) - 4
+            prevChr = readGlyph(eq[i - 2])
+            contents = genRender(eq[i+1:][:j-2], True)
+            render = add2dArrays(render, contents, 4, len(prevChr))
+            lastHeight =  len(prevChr) + len(contents) - 4
             
             print(f"    Setting index i to {i + j - 1}")
             i += j - 1
@@ -60,13 +66,15 @@ def genRender(eq, exp = False):
         for j in range(0, len(eq[i:])):
           if (eq[i:][j].isalnum()):
             print(f"  Appending power: {eq[i:][j]} at index {i + j}")
-            thisExp = readGlyph(begWth + "^" + eq[i:][j])
+            thisExp = readGlyph("^" + eq[i:][j])
             render = add2dArrays(render, thisExp, 4, -1 if exp else lastHeight)
             lastHeight = (max(len(render), len(thisExp)) if exp else lastHeight) + len(thisExp) - 4
           else:
             j -= 1
             break
         i += j
+    
+    print2dArray(render)
           
     i += 1
     if i < len(eq):
@@ -107,7 +115,6 @@ def readGlyph(g, resParen = 0):
             [False, False, False, True]
           )
         
-        print2dArray(glyph)
         return glyph
 
   raise Exception(f"Glyph not found '{g}'")
@@ -120,7 +127,7 @@ def add2dArrays(a, b, overlap = -1, relHt = -1):
   newArray = [
     [False] * (len(a[0]) + len(b[0]))
       for _ in range(
-        max(len(b), len(a)) if overlap == -1 else (relHt + len(b) - overlap)
+        max(len(b), len(a)) if overlap == -1 else (len(a) + len(b) - overlap)
       )
     ]
   newArray = merge2dArrays(newArray, a, 0, 0)
@@ -157,6 +164,6 @@ def print2dArray(arr):
     print()
   print("--PRERENDER--")
   
-print2dArray(genRender("1+(2^3-4)^5*6"))
+print2dArray(genRender("1+(2^3-4)^5*6^{1/2}"))
 
 
