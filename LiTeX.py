@@ -98,7 +98,7 @@ def genRender(eq, exp = False):
                     i += k
                     break
 
-              fraction = [[False] * max(len(num[0]), len(den[0]) + 4) for _ in range(len(num) + len(den) + 2)]
+              fraction = [[False] * (max(len(num[0]), len(den[0])) + 4) for _ in range(len(num) + len(den) + 2)]
               fraction = merge2dArrays(fraction, num, -(-(len(fraction[0])) // 2) - (len(num[0]) // 2), len(den) + 2)
               fraction = merge2dArrays(fraction, den, -(-(len(fraction[0])) // 2) - (len(den[0]) // 2), 0)
               fractione = merge2dArrays(fraction, [[True] * (len(fraction[0]) - 3)], 2, len(den) + 1)
@@ -198,7 +198,7 @@ def print2dArray(arr):
     print()
   print("--PRERENDER--")
   
-print2dArray(genRender("1+\\frac{1}{2}"))
+print2dArray(genRender("1+\\frac{2}{3^4+5}"))
 
 
 
