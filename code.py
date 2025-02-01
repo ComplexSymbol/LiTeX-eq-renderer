@@ -1,27 +1,20 @@
 import time
 import SPI
-import LiTeX as litex
+import LiTeX as lt
 
-# Initialize the display
+#Initialize the display
 SPI.initialize_display()
 time.sleep(1)
 SPI.software_reset()
 
-print("Sending data...")
-arr = litex.add2dArrays(litex.readGlyph("2"), litex.readGlyph("."))
-arr = litex.add2dArrays(arr, litex.readGlyph("3"))
-arr = litex.add2dArrays(arr, litex.readGlyph("x"))
-arr = litex.add2dArrays(arr, litex.readGlyph("^2"), True)
-arr = litex.add2dArrays(arr, litex.readGlyph("+"))
-arr = litex.add2dArrays(arr, litex.readGlyph("9"))
-arr = litex.add2dArrays(arr, litex.readGlyph("x"))
-arr = litex.add2dArrays(arr, litex.readGlyph("+"))
-arr = litex.add2dArrays(arr, litex.readGlyph("1"))
-SPI.send_bitmap(arr)
-print("Done!")
+equation = "1+(2^{\\frac{3}{4^5}+6^{7*\\frac{8}{9}}}+10)^11-12^13"
+equation = "1+\\frac{1}{2}+\\frac{3^2}{4}"
 
-while input() != "exit":
-    pass
+render = lt.genRender(equation)
+lt.print2dArray(render)
+SPI.send_bitmap(render)
+
+time.sleep(20)
 
 print("Clearing & Software reset...")
 SPI.clear_display()

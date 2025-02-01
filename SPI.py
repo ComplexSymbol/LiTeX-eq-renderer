@@ -185,14 +185,14 @@ def send_bitmap(bitmap):
                             str,
                             reversed(
                                 [
-                                    bitmap[y + 0][x],
-                                    0 if y + 1 >= len(bitmap) else bitmap[y + 1][x],
-                                    0 if y + 2 >= len(bitmap) else bitmap[y + 2][x],
-                                    0 if y + 3 >= len(bitmap) else bitmap[y + 3][x],
-                                    0 if y + 4 >= len(bitmap) else bitmap[y + 4][x],
-                                    0 if y + 5 >= len(bitmap) else bitmap[y + 5][x],
-                                    0 if y + 6 >= len(bitmap) else bitmap[y + 6][x],
-                                    0 if y + 7 >= len(bitmap) else bitmap[y + 7][x],
+                                    1 if bitmap[y + 0][x] else 0,
+                                    0 if y + 1 >= len(bitmap) else (1 if bitmap[y + 1][x] else 0),
+                                    0 if y + 2 >= len(bitmap) else (1 if bitmap[y + 2][x] else 0),
+                                    0 if y + 3 >= len(bitmap) else (1 if bitmap[y + 3][x] else 0),
+                                    0 if y + 4 >= len(bitmap) else (1 if bitmap[y + 4][x] else 0),
+                                    0 if y + 5 >= len(bitmap) else (1 if bitmap[y + 5][x] else 0),
+                                    0 if y + 6 >= len(bitmap) else (1 if bitmap[y + 6][x] else 0),
+                                    0 if y + 7 >= len(bitmap) else (1 if bitmap[y + 7][x] else 0),
                                 ]
                             ),
                         )
