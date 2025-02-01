@@ -73,8 +73,43 @@ def genRender(eq, exp = False):
 
         lastHeight = (max(len(render), len(thisExp)) if exp else lastHeight) + len(thisExp) - (3 if exp else 4)
         i += j
+      
+    elif eq[i] == "\\":
+      print("Found escape sequence")
+      for j in range(1, len(eq[i:]) + 1):
+        if eq[i:][j].isdigit():
+          print(f"  Found end of escape sequence/start of contents (i:{i}, j:{j}), esc: {eq[i:][:j-1]}")
+          
+          if eq[i:][j-1] == "{":
+            esc = eq[i:][:j-1]
+            
+            if esc == "\\frac":
+              print("    Found fraction")
+              i += j - 1
+
+              for repeat in range(2):
+                for k in range(1, len(eq[i:]) + 1):
+                  if eq[i:][:k].count("{") == eq[i:][:k].count("}"):
+                    print(f"      Found {"numerator" if repeat == 0 else "denominator"}: {eq[i:][:k]} (Recursing!)")
+                    num = genRender(eq[i+1:][:k-2], True) if repeat == 0 else num
+                    den = genRender(eq[i+1:][:k-2], True) if repeat == 1 else None
+                    
+                    print(f"Setting i to {i + k}")
+                    i += k
+                    break
+
+              fraction = [[False] * max(len(num[0]), len(den[0]) + 4) for _ in range(len(num) + len(den) + 2)]
+              fraction = merge2dArrays(fraction, num, -(-(len(fraction[0])) // 2) - (len(num[0]) // 2), len(den) + 2)
+              fraction = merge2dArrays(fraction, den, -(-(len(fraction[0])) // 2) - (len(den[0]) // 2), 0)
+              fractione = merge2dArrays(fraction, [[True] * (len(fraction[0]) - 3)], 2, len(den) + 1)
+              render = add2dArrays(render, fraction)
+            break
+          
+          print(f"  ")
     
-    print2dArray(render)
+    else:
+      print(f"  Unidentified character: {eq[i]}")
+      
     i += 1
     if i < len(eq):
       print(f"{' ' * (i + len(str(i)) + 31)}V")
@@ -163,6 +198,7 @@ def print2dArray(arr):
     print()
   print("--PRERENDER--")
   
-print2dArray(genRender("2^{9^10}"))
+print2dArray(genRender("1+\\frac{1}{2}"))
+
 
 
