@@ -1,6 +1,9 @@
+lastFinishedBarHt = None
+
+
 def genRender(eq, exp=False):
+    global lastFinishedBarHt
     i = 0
-    mode = ""
     begWth = "" if exp == False else "^"
     lastHeight = 0
     barHt = 2 if exp else 4
@@ -25,16 +28,27 @@ def genRender(eq, exp=False):
                     print(f"    Recursing contents {eq[i+1:][:j-2]}")
 
                     contents = genRender(eq[i + 1 :][: j - 2], exp)
-                    print(f"Adding {len(contents) - 10} to paren size")
-
                     parenHeight = len(contents) - (7 if exp else 10)
                     rightParen = readGlyph(begWth + ")", parenHeight)
 
                     render = add2dArrays(
-                        render, readGlyph(begWth + "(", -parenHeight), AbarHt=barHt
+                        render,
+                        readGlyph(begWth + "(", -parenHeight),
+                        AbarHt=barHt,
+                        BbarHt=lastFinishedBarHt,
                     )
-                    render = add2dArrays(render, contents, AbarHt=barHt)
-                    render = add2dArrays(render, rightParen, AbarHt=barHt)
+                    render = add2dArrays(
+                        render,
+                        contents,
+                        AbarHt=lastFinishedBarHt,
+                        BbarHt=lastFinishedBarHt,
+                    )
+                    render = add2dArrays(
+                        render,
+                        rightParen,
+                        AbarHt=lastFinishedBarHt,
+                        BbarHt=lastFinishedBarHt,
+                    )
                     lastHeight = len(rightParen)
 
                     print(f"    Setting index i to {i + j - 1}")
@@ -155,20 +169,29 @@ def genRender(eq, exp=False):
                             )
                             barHt = len(den)
                             lastHeight = len(fraction)
-
                         break
-
                     print(f"  ")
 
         else:
-            print(f"  Unidentified character: {eq[i]}")
+            raise Exception(f"  Unidentified character: {eq[i]}")
 
-        print2dArray(render)
         i += 1
         if i < len(eq):
             print(f"{' ' * (i + len(str(i)) + 31)}V")
 
+    print("Removing overhead...")
+    count = 0
+    while True:
+        if all(not p for p in render[0]):
+            del render[0]
+            count += 1
+        else:
+            break
+    render.insert(0, [False] * len(render[0]))
+    print(f"Removed empty overhead line [x{count - 1}]")
+
     print(f"Finished parsing {eq}")
+    lastFinishedBarHt = barHt
     return render
 
 
@@ -260,10 +283,10 @@ def merge2dArrays(a, b, x, y):
 
 
 def print2dArray(arr):
-    arr = [[1 if b else 0 for b in arr[r]] for r in range(len(arr))]
+    # arr = [[1 if b else 0 for b in arr[r]] for r in range(len(arr))]
 
-    for y in range(len(arr)):
-        print(f"{' ' * (len(str(len(arr))) - len(str(y)))}{y}: {arr[y]}", end=",\n")
+    # for y in range(len(arr)):
+    #    print(f"{' ' * (len(str(len(arr))) - len(str(y)))}{y}: {arr[y]}", end=",\n")
 
     print(f"Dimensions: {len(arr[0])}x{len(arr)}")
     print("--PRERENDER--")
