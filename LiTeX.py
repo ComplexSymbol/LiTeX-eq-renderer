@@ -1,18 +1,18 @@
 def genRender(eq, exp=False):
     i = 0
     mode = ""
-    render = [[]]
     begWth = "" if exp == False else "^"
     lastHeight = 0
-    underMg = 0
+    barHt = 2 if exp else 4
+    render = [[]] * (7 if exp else 10)
 
     while i < len(eq):
         print(f"Parsing char: '{eq[i]}' at index {i} of {eq}")
 
         if eq[i].isdigit() or eq[i] in ("+", "-", "*", "/"):
-            print(f"  Appending digit '{eq[i]}' with underMargin {underMg}")
+            print(f"  Appending digit '{eq[i]}'")
             char = readGlyph(begWth + eq[i])
-            render = add2dArrays(render, char, botMarg = underMg)
+            render = add2dArrays(render, char, AbarHt=barHt)
             lastHeight = len(char)
 
         elif eq[i] == "(":
@@ -30,9 +30,11 @@ def genRender(eq, exp=False):
                     parenHeight = len(contents) - (7 if exp else 10)
                     rightParen = readGlyph(begWth + ")", parenHeight)
 
-                    render = add2dArrays(render, readGlyph(begWth + "(", -parenHeight), botMarg = underMg)
-                    render = add2dArrays(render, contents, botMarg = underMg)
-                    render = add2dArrays(render, rightParen, botMarg = underMg)
+                    render = add2dArrays(
+                        render, readGlyph(begWth + "(", -parenHeight), AbarHt=barHt
+                    )
+                    render = add2dArrays(render, contents, AbarHt=barHt)
+                    render = add2dArrays(render, rightParen, AbarHt=barHt)
                     lastHeight = len(rightParen)
 
                     print(f"    Setting index i to {i + j - 1}")
@@ -57,7 +59,7 @@ def genRender(eq, exp=False):
 
                         contents = genRender(eq[i + 1 :][: j - 2], True)
                         render = add2dArrays(
-                            render, contents, 3 if exp else 4, lastHeight + underMg
+                            render, contents, overlap=3 if exp else 4, relHt=lastHeight
                         )
 
                         print(f"    Setting index i to {i + j - 1}")
@@ -71,10 +73,12 @@ def genRender(eq, exp=False):
             elif eq[i].isdigit():
                 for j in range(0, len(eq[i:])):
                     if eq[i:][j].isdigit():
-                        print(f"  Appending power: {eq[i:][j]} at index {i + j} with relHt {lastHeight}")
+                        print(
+                            f"  Appending power: {eq[i:][j]} at index {i + j} with relHt {lastHeight}"
+                        )
                         thisExp = readGlyph("^" + eq[i:][j])
                         render = add2dArrays(
-                            render, thisExp, (3 if exp else 4), lastHeight + underMg
+                            render, thisExp, overlap=3 if exp else 4, relHt=lastHeight
                         )
                     else:
                         j -= 1
@@ -140,15 +144,17 @@ def genRender(eq, exp=False):
                                 -(-(len(fraction[0])) // 2) - (len(den[0]) // 2),
                                 0,
                             )
-                            fractione = merge2dArrays(
+                            fraction = merge2dArrays(
                                 fraction,
                                 [[True] * (len(fraction[0]) - 3)],
                                 2,
                                 len(den) + 1,
                             )
-                            render = add2dArrays(render, fraction, barHt=len(den))
+                            render = add2dArrays(
+                                render, fraction, AbarHt=barHt, BbarHt=len(den)
+                            )
+                            barHt = len(den)
                             lastHeight = len(fraction)
-                            underMg = max(underMg, (len(fraction) - 10) // 2)
 
                         break
 
@@ -204,19 +210,37 @@ def readGlyph(g, resParen=0):
     raise Exception(f"Glyph not found '{g}'")
 
 
-def add2dArrays(a, b, overlap=-1, relHt=-1, barHt=-1, botMarg = 0):
+def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1):
     if relHt == -1:
         relHt = len(a)
+    if AbarHt == -1:
+        AbarHt = (len(a) // 2) - 1
+    if BbarHt == -1:
+        BbarHt = (len(b) // 2) - 1
+    diff = AbarHt - BbarHt
+
+    print(
+        f"Add2dArrays ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}"
+    )
 
     newArray = [
         [False] * (len(a[0]) + len(b[0]))
         for _ in range(
-            max(len(b), len(a)) if overlap == -1 else max(len(a), relHt + len(b) - overlap)
+            max(
+                max(len(a), len(b)) + ((len(b) - BbarHt - 1) - (len(a) - AbarHt - 1)),
+                len(a),
+                len(b),
+            )
+            if overlap == -1
+            else max(len(a), relHt + len(b) - overlap)
         )
     ]
-    newArray = merge2dArrays(newArray, a, 0, 0 if barHt == -1 else (barHt - (len(a) // 2) + 1))
+    newArray = merge2dArrays(newArray, a, 0, abs(diff) if diff < 0 else 0)
     newArray = merge2dArrays(
-        newArray, b, len(a[0]), botMarg if overlap == -1 else (relHt - overlap)
+        newArray,
+        b,
+        len(a[0]),
+        (diff if diff > 0 else 0) if overlap == -1 else (relHt - overlap),
     )
 
     return newArray

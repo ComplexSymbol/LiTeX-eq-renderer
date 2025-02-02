@@ -8,10 +8,9 @@ time.sleep(1)
 SPI.software_reset()
 
 equation = "1+(2^{\\frac{3}{4^5}+6^{7*\\frac{8}{9}}}+10)^11-12^13"
-equation = "1+\\frac{1}{2}+\\frac{3^2}{4}"
+equation = "1+(\\frac{1}{2}-\\frac{3^2+\\frac{1}{2}}{4^2}+1)"
 
 render = lt.genRender(equation)
-lt.print2dArray(render)
 SPI.send_bitmap(render)
 
 time.sleep(20)
