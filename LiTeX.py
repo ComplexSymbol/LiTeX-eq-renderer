@@ -49,6 +49,7 @@ def genRender(eq, exp=False):
                         AbarHt=lastFinishedBarHt,
                         BbarHt=lastFinishedBarHt,
                     )
+                    barHt = lastFinishedBarHt
                     lastHeight = len(rightParen)
 
                     print(f"    Setting index i to {i + j - 1}")
@@ -167,7 +168,7 @@ def genRender(eq, exp=False):
                             render = add2dArrays(
                                 render, fraction, AbarHt=barHt, BbarHt=len(den)
                             )
-                            barHt = len(den)
+                            barHt = max(barHt, len(den))
                             lastHeight = len(fraction)
                         break
                     print(f"  ")
