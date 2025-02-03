@@ -148,7 +148,7 @@ def genRender(eq, exp=False):
             fraction = merge2dArrays(
               fraction,
               num,
-              -(-(len(fraction[0])) // 2) - (len(num[0]) // 2),
+              (len(fraction[0]) // 2) - (len(num[0]) // 2),
               len(den) + 2,
             )
             fraction = merge2dArrays(
@@ -187,7 +187,8 @@ def genRender(eq, exp=False):
                 render = add2dArrays(render, radical, AbarHt = barHt, BbarHt = lastFinishedBarHt)
                 barHt = lastFinishedBarHt
                 lastHeight = len(radicand)
-                i += k
+                i += k - 1
+                break
             break
 
     else:
@@ -310,14 +311,12 @@ def print2dArray(arr):
   print("--PRERENDER--")
   for y in range(len(arr)):
     for x in range(len(arr[0])):
-      print("█" * 2 if arr[y][x] else " " * 2, end="")
+      print("██" if arr[y][x] else "()", end="")
     print()
   print("--PRERENDER--")
   
   
-equation = "1+(2^{\\frac{3}{4^5}+6^{7*\\frac{8}{9}}}+10)^11-12^13"
-equation = "1+(\\frac{1}{2}-\\frac{3^2+\\frac{1}{2}}{4^2}+\\frac{1}{2})+1+\\frac{1}{2}"
-equation = "\\sqrt{1}"
+equation = "\\frac{\\sqrt{1}*\\sqrt{2}}{3}"
 
 r = genRender(equation)
 print2dArray(r)
