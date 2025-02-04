@@ -11,8 +11,10 @@ def genRender(eq, exp=False):
 
   while i < len(eq):
     print(f"Parsing char: '{eq[i]}' at index {i} of {eq}")
-
-    if eq[i].isdigit() or eq[i] in ("+", "-", "*", "/"):
+    if eq[i] == " ": pass
+    
+    
+    if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/"):
       print(f" Appending digit '{eq[i]}'")
       char = readGlyph(begWth + eq[i])
       render = add2dArrays(render, char, AbarHt=barHt)
@@ -85,9 +87,9 @@ def genRender(eq, exp=False):
         if j == len(eq[i:]):
           raise Exception("Unfinished exponential brace")
 
-      elif eq[i].isdigit():
+      elif eq[i].isdigit() or eq[i].isalpha():
         for j in range(0, len(eq[i:])):
-          if eq[i:][j].isdigit():
+          if eq[i:][j].isdigit or eq[i].isalpha():
             print(
               f" Appending power: {eq[i:][j]} at index {i + j} with relHt {lastHeight}"
             )
@@ -178,11 +180,11 @@ def genRender(eq, exp=False):
                 radicand = genRender(eq[i + 1 :][: k - 2], exp)
                 rad = [[False, False]] + ([[False, True]] * ((len(radicand) + 1) // 2))
                 rad += [[True, False]] * ((len(radicand) - (len(radicand) + 1) // 2) - 4)
-                radical = [[False] * (5 + len(radicand[0])) for _ in range(len(radicand) + 2)]
+                radical = [[False] * (6 + len(radicand[0])) for _ in range(len(radicand) + 2)]
                 radical = merge2dArrays(radical, readGlyph("rad"), 0, 0)
                 radical = merge2dArrays(radical, rad, 3, 4)
                 radical = merge2dArrays(radical, radicand, 5, 0)
-                radical = merge2dArrays(radical, [[True] * (len(radicand[0]) + 1)], 4, len(radicand) + 1)
+                radical = merge2dArrays(radical, [[True] * (len(radicand[0]) + 2)], 4, len(radicand) + 1)
                 
                 render = add2dArrays(render, radical, AbarHt = barHt, BbarHt = lastFinishedBarHt)
                 barHt = lastFinishedBarHt
@@ -311,15 +313,12 @@ def print2dArray(arr):
   print("--PRERENDER--")
   for y in range(len(arr)):
     for x in range(len(arr[0])):
-      print("██" if arr[y][x] else "()", end="")
+      print("██" if arr[y][x] else "  ", end="")
     print()
   print("--PRERENDER--")
   
   
-equation = "\\frac{\\sqrt{1}*\\sqrt{2}}{3}"
-
+equation = "\\frac{\\sqrt{x}*\\sqrt{\\frac{2}{3}}}{4}+(\\sqrt{\\frac{5^6}{7}}-\\frac{8}{9^10})"
+equation = "sin(\\frac{cos(5)}{log(2)+tan(3)})"
 r = genRender(equation)
 print2dArray(r)
-
-  
-  
