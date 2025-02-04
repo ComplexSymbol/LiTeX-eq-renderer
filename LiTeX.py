@@ -191,7 +191,7 @@ def genRender(eq, exp=False):
                 rad = [[False, False]] + ([[False, True]] * ((len(radicand) + 1) // 2))
                 rad += [[True, False]] * ((len(radicand) - (len(radicand) + 1) // 2) - 4)
 
-                radical = [[False] * (10 + len(radicand[0]) + len(nth[0])) for _ in range(len(radicand) + 2)]
+                radical = [[False] * (10 + len(radicand[0]) + len(nth[0])) for _ in range(max(len(radicand) + 2, len(radicand) + len(nth) - 2))]
                 radical = merge2dArrays(radical, nth, 0, 4)
                 radical = merge2dArrays(radical, readGlyph("rad"), len(nth[0]) - 2, 0)
                 radical = merge2dArrays(radical, rad, len(nth[0]) + 1, 4)
@@ -333,6 +333,6 @@ def print2dArray(arr):
 equation = "\\frac{\\sqrt{x}*\\sqrt{\\frac{2}{3}}}{4}+(\\sqrt{\\frac{5^6}{7}}-\\frac{8}{9^10})"
 equation = r"\frac{1}{\frac{2}{\frac{sin(5)^{log(6)}}{5}}}"
 equation = r"\sqrt{\frac{\sqrt{1}}{2}}+(3)^{\sqrt{4}}"
-equation = r"\sqrt{2}{10}"
+equation = r"\frac{1}{\sqrt{2}{10}}"
 r = genRender(equation)
 print2dArray(r)
