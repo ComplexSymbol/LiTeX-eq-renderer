@@ -144,7 +144,7 @@ def genRender(eq, exp=False):
             i -= 1
             
             fraction = [
-              [False] * (max(len(num[0]), len(den[0])) + 4)
+              [False] * (max(len(num[0]), len(den[0])) + 3 + (max(len(num[0]), len(den[0])) % 2))
               for _ in range(len(num) + len(den) + 2)
             ]
             fraction = merge2dArrays(
@@ -156,13 +156,13 @@ def genRender(eq, exp=False):
             fraction = merge2dArrays(
               fraction,
               den,
-              -(-(len(fraction[0])) // 2) - (len(den[0]) // 2),
+              (len(fraction[0]) // 2) - (len(den[0]) // 2),
               0,
             )
             fraction = merge2dArrays(
               fraction,
-              [[True] * (len(fraction[0]) - 3)],
-              2,
+              [[True] * (len(fraction[0]) - 2)],
+              1,
               len(den) + 1,
             )
             render = add2dArrays(
@@ -313,12 +313,12 @@ def print2dArray(arr):
   print("--PRERENDER--")
   for y in range(len(arr)):
     for x in range(len(arr[0])):
-      print("██" if arr[y][x] else "  ", end="")
+      print("██" if arr[y][x] else "()", end="")
     print()
   print("--PRERENDER--")
   
   
 equation = "\\frac{\\sqrt{x}*\\sqrt{\\frac{2}{3}}}{4}+(\\sqrt{\\frac{5^6}{7}}-\\frac{8}{9^10})"
-equation = "sin(\\frac{cos(5)}{log(2)+tan(3)})"
+equation = r"\frac{1}{\frac{2}{\frac{(5)}{5}}}"
 r = genRender(equation)
 print2dArray(r)
