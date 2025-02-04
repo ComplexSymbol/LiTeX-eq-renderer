@@ -10,9 +10,9 @@ def genRender(eq, exp=False):
   render = [[]] * (7 if exp else 10)
 
   while i < len(eq):
+    print(f"{' ' * (i + len(str(i)) + 31)}V")
     print(f"Parsing char: '{eq[i]}' at index {i} of {eq}")
     if eq[i] == " ": pass
-    
     
     if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/"):
       print(f" Appending digit '{eq[i]}'")
@@ -52,7 +52,7 @@ def genRender(eq, exp=False):
             BbarHt=lastFinishedBarHt,
           )
           barHt = lastFinishedBarHt
-          lastHeight = len(rightParen) + barHt - 1
+          lastHeight = len(rightParen) + barHt - 4
 
           print(f"  Setting index i to {i + j - 1}")
           i += j - 1
@@ -141,8 +141,7 @@ def genRender(eq, exp=False):
                   print(f"Setting i to {i + k}")
                   i += k
                   break
-            i -= 1
-            
+
             fraction = [
               [False] * (max(len(num[0]), len(den[0])) + 3 + (max(len(num[0]), len(den[0])) % 2))
               for _ in range(len(num) + len(den) + 2)
@@ -177,7 +176,10 @@ def genRender(eq, exp=False):
             nth = [[False, False]]
             
             for k in range(1, len(eq[i:]) + 1):
-              if eq[i:][:k].count("{") == eq[i:][:k].count("}") and eq[i:][k] == "{":
+              if eq[i:][:k].count("{") == eq[i:][:k].count("}"):
+                if not (False if k + i == len(eq) else eq[i:][k] == "{"):
+                  break
+                
                 print(f"Found nth root: {eq[i:][:k]} (Recursing!)")
                 nth = genRender(eq[i + 1 :][: k - 2], True)
                 i += k
@@ -191,7 +193,7 @@ def genRender(eq, exp=False):
                 rad = [[False, False]] + ([[False, True]] * ((len(radicand) + 1) // 2))
                 rad += [[True, False]] * ((len(radicand) - (len(radicand) + 1) // 2) - 4)
 
-                radical = [[False] * (10 + len(radicand[0]) + len(nth[0])) for _ in range(max(len(radicand) + 2, len(radicand) + len(nth) - 2))]
+                radical = [[False] * (5 + len(radicand[0]) + len(nth[0])) for _ in range(max(len(radicand) + 2, len(radicand) + len(nth) - 2))]
                 radical = merge2dArrays(radical, nth, 0, 4)
                 radical = merge2dArrays(radical, readGlyph("rad"), len(nth[0]) - 2, 0)
                 radical = merge2dArrays(radical, rad, len(nth[0]) + 1, 4)
@@ -200,7 +202,7 @@ def genRender(eq, exp=False):
 
                 render = add2dArrays(render, radical, AbarHt = barHt, BbarHt = lastFinishedBarHt)
                 barHt = lastFinishedBarHt
-                lastHeight = len(radicand)
+                lastHeight = len(radical)
                 i += k - 1
                 break
             break
@@ -209,8 +211,6 @@ def genRender(eq, exp=False):
       raise Exception(f" Unidentified character: {eq[i]}")
 
     i += 1
-    if i < len(eq):
-      print(f"{' ' * (i + len(str(i)) + 31)}V")
 
   print("Removing overhead...")
   count = 0
@@ -325,7 +325,7 @@ def print2dArray(arr):
   print("--PRERENDER--")
   for y in range(len(arr)):
     for x in range(len(arr[0])):
-      print("██" if arr[y][x] else "  ", end="")
+      print("██" if arr[y][x] else "[]", end="")
     print()
   print("--PRERENDER--")
   
@@ -333,6 +333,6 @@ def print2dArray(arr):
 equation = "\\frac{\\sqrt{x}*\\sqrt{\\frac{2}{3}}}{4}+(\\sqrt{\\frac{5^6}{7}}-\\frac{8}{9^10})"
 equation = r"\frac{1}{\frac{2}{\frac{sin(5)^{log(6)}}{5}}}"
 equation = r"\sqrt{\frac{\sqrt{1}}{2}}+(3)^{\sqrt{4}}"
-equation = r"\frac{1}{\sqrt{2}{10}}"
+equation = r"\sqrt{\frac{\sqrt{1}{2}}{3}}+(3)^{\sqrt{4}}"
 r = genRender(equation)
 print2dArray(r)
