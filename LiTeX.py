@@ -52,7 +52,7 @@ def genRender(eq, exp=False):
             BbarHt=lastFinishedBarHt,
           )
           barHt = lastFinishedBarHt
-          lastHeight = len(rightParen) + barHt - 4
+          lastHeight = parenHeight + (7 if exp else 10)
 
           print(f"  Setting index i to {i + j - 1}")
           i += j - 1
@@ -143,7 +143,7 @@ def genRender(eq, exp=False):
                   break
 
             fraction = [
-              [False] * (max(len(num[0]), len(den[0])) + 3 + (max(len(num[0]), len(den[0])) % 2))
+              [False] * (max(len(num[0]), len(den[0])) + 2 + (max(len(num[0]), len(den[0])) % 2))
               for _ in range(len(num) + len(den) + 2)
             ]
             fraction = merge2dArrays(
@@ -160,7 +160,7 @@ def genRender(eq, exp=False):
             )
             fraction = merge2dArrays(
               fraction,
-              [[True] * (len(fraction[0]) - 2)],
+              [[True] * (len(fraction[0]) - 1)],
               1,
               len(den) + 1,
             )
@@ -333,6 +333,6 @@ def print2dArray(arr):
 equation = "\\frac{\\sqrt{x}*\\sqrt{\\frac{2}{3}}}{4}+(\\sqrt{\\frac{5^6}{7}}-\\frac{8}{9^10})"
 equation = r"\frac{1}{\frac{2}{\frac{sin(5)^{log(6)}}{5}}}"
 equation = r"\sqrt{\frac{\sqrt{1}}{2}}+(3)^{\sqrt{4}}"
-equation = r"\sqrt{\frac{\sqrt{1}{2}}{3}}+(3)^{\sqrt{4}}"
+equation = r"\sqrt{\frac{\sqrt{69}{2}}{3}}+(\frac{3}{4})^{\sqrt{4}}"
 r = genRender(equation)
 print2dArray(r)
