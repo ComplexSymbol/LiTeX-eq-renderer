@@ -198,8 +198,9 @@ def genRender(eq, exp=False):
                 radical = merge2dArrays(radical, readGlyph("rad"), len(nth[0]) - 2, 0)
                 radical = merge2dArrays(radical, rad, len(nth[0]) + 1, 4)
                 radical = merge2dArrays(radical, radicand, len(nth[0]) + 3, 0)
-                radical = merge2dArrays(radical, [[True] * (len(radicand[0]) + 2)], len(nth[0]) + 2, len(radicand) + 1)
-
+                radical = merge2dArrays(radical, [[True] * (len(radicand[0]) + 3)], len(nth[0]) + 2, len(radicand) + 1)
+                radical = merge2dArrays(radical, [[True], [True]], len(radicand[0]) + len(nth[0]) + 4, len(radicand) - 1)
+                
                 render = add2dArrays(render, radical, AbarHt = barHt, BbarHt = lastFinishedBarHt)
                 barHt = lastFinishedBarHt
                 lastHeight = len(radical)
@@ -334,5 +335,6 @@ equation = "\\frac{\\sqrt{x}*\\sqrt{\\frac{2}{3}}}{4}+(\\sqrt{\\frac{5^6}{7}}-\\
 equation = r"\frac{1}{\frac{2}{\frac{sin(5)^{log(6)}}{5}}}"
 equation = r"\sqrt{\frac{\sqrt{1}}{2}}+(3)^{\sqrt{4}}"
 equation = r"\sqrt{\frac{\sqrt{69}{2}}{3}}+(\frac{3}{4})^{\sqrt{4}}"
+equation = r"\sqrt{5}"
 r = genRender(equation)
 print2dArray(r)
