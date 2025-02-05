@@ -61,53 +61,35 @@ def genRender(eq, exp=False):
         if j == len(eq[i:]):
           raise Exception("Unfinished parenthesis")
 
-    elif eq[i] == "^":
+    elif eq[i] == "^" or eq[i] == "_":
+      pwr = eq[i] == "^"
       i += 1
       print(f"Found power at index {i}")
 
       if eq[i] == "{":
-        print(f" Found exponent brace")
+        print(f" Found exponent/subscript brace")
         for j in range(1, len(eq[i:]) + 1):
           if eq[i:][:j].count("{") == eq[i:][:j].count("}"):
-            print(
-              f"  Found end of exponent brace at index {i + j} [contents: {eq[i:][:j]}]"
-            )
+            print(f"  Found end of exponent/subscript brace at index {i + j} [contents: {eq[i:][:j]}]")
             print(f"  Recursing contents {eq[i+1:][:j-2]}")
 
             contents = genRender(eq[i + 1 :][: j - 2], True)
-            render = add2dArrays(
-              render, contents, overlap=3 if exp else 4, relHt=lastHeight
-            )
+            if pwr:
+              render = add2dArrays(
+                render, contents, overlap=3 if exp else 4, relHt=lastHeight
+              )
+            else:
+              render = add2dArrays(render, contents, AbarHt=barHt + 2, BbarHt=len(contents) + 2)
+              barHt += 2
 
             print(f"  Setting index i to {i + j - 1}")
             i += j - 1
             break
 
-        lastHeight = lastHeight + len(contents) - (3 if exp else 4)
+        lastHeight = lastHeight + (len(contents) - (3 if exp else 4) if pwr else 0)
         if j == len(eq[i:]):
           raise Exception("Unfinished exponential brace")
-
-      elif eq[i].isdigit() or eq[i].isalpha():
-        for j in range(0, len(eq[i:])):
-          if eq[i:][j].isdigit or eq[i].isalpha():
-            print(
-              f" Appending power: {eq[i:][j]} at index {i + j} with relHt {lastHeight}"
-            )
-            thisExp = readGlyph("^" + eq[i:][j])
-            render = add2dArrays(
-              render, thisExp, overlap=3 if exp else 4, relHt=lastHeight
-            )
-          else:
-            j -= 1
-            break
-
-        lastHeight = (
-          (max(len(render), len(thisExp)) if exp else lastHeight)
-          + len(thisExp)
-          - (3 if exp else 4)
-        )
-        i += j
-
+    
     elif eq[i] == "\\":
       print("Found escape sequence")
       for j in range(1, len(eq[i:]) + 1):
@@ -285,7 +267,7 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1):
     for _ in range(
       max(
         max(len(a), len(b)) + ((len(b) - BbarHt - 1) - (len(a) - AbarHt - 1)),
-        len(a),
+        len(a)  + max(0, BbarHt - len(b)),
         len(b),
       )
       if overlap == -1
@@ -326,15 +308,16 @@ def print2dArray(arr):
   print("--PRERENDER--")
   for y in range(len(arr)):
     for x in range(len(arr[0])):
-      print("██" if arr[y][x] else "[]", end="")
+      print("██" if arr[y][x] else "  ", end="")
     print()
   print("--PRERENDER--")
   
   
 equation = "\\frac{\\sqrt{x}*\\sqrt{\\frac{2}{3}}}{4}+(\\sqrt{\\frac{5^6}{7}}-\\frac{8}{9^10})"
-equation = r"\frac{1}{\frac{2}{\frac{sin(5)^{log(6)}}{5}}}"
 equation = r"\sqrt{\frac{\sqrt{1}}{2}}+(3)^{\sqrt{4}}"
 equation = r"\sqrt{\frac{\sqrt{69}{2}}{3}}+(\frac{3}{4})^{\sqrt{4}}"
-equation = r"\sqrt{5}"
+equation = r"log_{2}(3)"
 r = genRender(equation)
 print2dArray(r)
+
+
