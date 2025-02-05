@@ -1,20 +1,21 @@
 lastFinishedBarHt = None
-
+lastFinishedHang = None
 
 def genRender(eq, exp=False):
-  global lastFinishedBarHt
+  global lastFinishedBarHt, lastFinishedHang
   i = 0
   begWth = "" if exp == False else "^"
   lastHeight = 0
   barHt = 2 if exp else 4
   render = [[]] * (7 if exp else 10)
+  hang = 0
 
   while i < len(eq):
     print(f"{' ' * (i + len(str(i)) + 31)}V")
-    print(f"Parsing char: '{eq[i]}' at index {i} of {eq}")
+    print(f"Parsing char: '{eq[i]}' at index {i} of {eq} with hang {hang}")
     if eq[i] == " ": pass
     
-    if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/"):
+    if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "="):
       print(f" Appending digit '{eq[i]}'")
       char = readGlyph(begWth + eq[i])
       render = add2dArrays(render, char, AbarHt=barHt)
@@ -36,23 +37,23 @@ def genRender(eq, exp=False):
           render = add2dArrays(
             render,
             readGlyph(begWth + "(", -parenHeight),
-            AbarHt=barHt,
+            AbarHt=lastFinishedBarHt,
             BbarHt=lastFinishedBarHt,
           )
           render = add2dArrays(
             render,
             contents,
-            AbarHt=barHt,
+            AbarHt=lastFinishedBarHt,
             BbarHt=lastFinishedBarHt,
           )
           render = add2dArrays(
             render,
             rightParen,
-            AbarHt=barHt,
+            AbarHt=lastFinishedBarHt,
             BbarHt=lastFinishedBarHt,
           )
-          barHt = lastFinishedBarHt
-          lastHeight = parenHeight + (7 if exp else 10)
+          barHt = lastFinishedBarHt + hang
+          lastHeight = parenHeight + (7 if exp else 10) + hang
 
           print(f"  Setting index i to {i + j - 1}")
           i += j - 1
@@ -79,8 +80,9 @@ def genRender(eq, exp=False):
                 render, contents, overlap=3 if exp else 4, relHt=lastHeight
               )
             else:
-              render = add2dArrays(render, contents, AbarHt=barHt + 2, BbarHt=len(contents) + 2, add=3)
-              barHt += 3
+              render = add2dArrays(render, contents, AbarHt=barHt, BbarHt=len(contents), add = len(contents) - barHt)
+              barHt += len(contents) - 4
+              hang += len(contents) - 4
 
             print(f"  Setting index i to {i + j - 1}")
             i += j - 1
@@ -149,8 +151,9 @@ def genRender(eq, exp=False):
             render = add2dArrays(
               render, fraction, AbarHt=barHt, BbarHt=len(den)
             )
-            barHt = max(barHt, len(den))
-            lastHeight = len(fraction)
+            barHt = max(barHt, len(den)) + hang
+            lastHeight = len(fraction) + hang
+            i -= 1
             break
           
           elif esc == "\\sqrt":
@@ -184,15 +187,16 @@ def genRender(eq, exp=False):
                 radical = merge2dArrays(radical, [[True], [True]], len(radicand[0]) + len(nth[0]) + 4, len(radicand) - 1)
                 
                 render = add2dArrays(render, radical, AbarHt = barHt, BbarHt = lastFinishedBarHt)
-                barHt = lastFinishedBarHt
-                lastHeight = len(radical)
+                barHt = lastFinishedBarHt + hang
+                lastHeight = len(radical) + hang
                 i += k - 1
                 break
             break
 
     else:
       raise Exception(f" Unidentified character: {eq[i]}")
-
+    
+    print2dArray(render)
     i += 1
 
   print("Removing overhead...")
@@ -208,6 +212,7 @@ def genRender(eq, exp=False):
 
   print(f"Finished parsing {eq}")
   lastFinishedBarHt = barHt
+  lastFinishedHang = hang
   return render
 
 
@@ -316,7 +321,7 @@ def print2dArray(arr):
 equation = "\\frac{\\sqrt{x}*\\sqrt{\\frac{2}{3}}}{4}+(\\sqrt{\\frac{5^6}{7}}-\\frac{8}{9^10})"
 equation = r"\sqrt{\frac{\sqrt{1}}{2}}+(3)^{\sqrt{4}}"
 equation = r"\sqrt{\frac{\sqrt{69}{2}}{3}}+(\frac{3}{4})^{\sqrt{4}}"
-equation = r"2^{2}_{2}+"
+equation = r"(log_{2\sqrt{2}}(3))^{\sqrt{2}}+1"
 r = genRender(equation)
 print2dArray(r)
 
