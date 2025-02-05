@@ -64,7 +64,7 @@ def genRender(eq, exp=False):
     elif eq[i] == "^" or eq[i] == "_":
       pwr = eq[i] == "^"
       i += 1
-      print(f"Found power at index {i}")
+      print(f"Found exponent/subscript at index {i}")
 
       if eq[i] == "{":
         print(f" Found exponent/subscript brace")
@@ -79,14 +79,14 @@ def genRender(eq, exp=False):
                 render, contents, overlap=3 if exp else 4, relHt=lastHeight
               )
             else:
-              render = add2dArrays(render, contents, AbarHt=barHt + 2, BbarHt=len(contents) + 2)
-              barHt += 2
+              render = add2dArrays(render, contents, AbarHt=barHt + 2, BbarHt=len(contents) + 2, add=3)
+              barHt += 3
 
             print(f"  Setting index i to {i + j - 1}")
             i += j - 1
             break
 
-        lastHeight = lastHeight + (len(contents) - (3 if exp else 4) if pwr else 0)
+        lastHeight = lastHeight + ((len(contents) - (3 if exp else 4)) if pwr else 2)
         if j == len(eq[i:]):
           raise Exception("Unfinished exponential brace")
     
@@ -249,7 +249,7 @@ def readGlyph(g, resParen=0):
   raise Exception(f"Glyph not found '{g}'")
 
 
-def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1):
+def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
   if relHt == -1:
     relHt = len(a)
   if AbarHt == -1:
@@ -267,9 +267,9 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1):
     for _ in range(
       max(
         max(len(a), len(b)) + ((len(b) - BbarHt - 1) - (len(a) - AbarHt - 1)),
-        len(a)  + max(0, BbarHt - len(b)),
+        len(a),
         len(b),
-      )
+      ) + add
       if overlap == -1
       else max(len(a), relHt + len(b) - overlap)
     )
@@ -316,8 +316,7 @@ def print2dArray(arr):
 equation = "\\frac{\\sqrt{x}*\\sqrt{\\frac{2}{3}}}{4}+(\\sqrt{\\frac{5^6}{7}}-\\frac{8}{9^10})"
 equation = r"\sqrt{\frac{\sqrt{1}}{2}}+(3)^{\sqrt{4}}"
 equation = r"\sqrt{\frac{\sqrt{69}{2}}{3}}+(\frac{3}{4})^{\sqrt{4}}"
-equation = r"log_{2}(3)"
+equation = r"2^{2}_{2}+"
 r = genRender(equation)
 print2dArray(r)
-
 
