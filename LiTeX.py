@@ -1,8 +1,7 @@
 lastFinishedBarHt = None
-lastFinishedHang = None
 
 def genRender(eq, exp=False):
-  global lastFinishedBarHt, lastFinishedHang
+  global lastFinishedBarHt
   i = 0
   begWth = "" if exp == False else "^"
   lastHeight = 0
@@ -37,19 +36,19 @@ def genRender(eq, exp=False):
           render = add2dArrays(
             render,
             readGlyph(begWth + "(", -parenHeight),
-            AbarHt=lastFinishedBarHt,
+            AbarHt=lastFinishedBarHt + hang,
             BbarHt=lastFinishedBarHt,
           )
           render = add2dArrays(
             render,
             contents,
-            AbarHt=lastFinishedBarHt,
+            AbarHt=lastFinishedBarHt + hang,
             BbarHt=lastFinishedBarHt,
           )
           render = add2dArrays(
             render,
             rightParen,
-            AbarHt=lastFinishedBarHt,
+            AbarHt=lastFinishedBarHt + hang,
             BbarHt=lastFinishedBarHt,
           )
           barHt = lastFinishedBarHt + hang
@@ -80,7 +79,7 @@ def genRender(eq, exp=False):
                 render, contents, overlap=3 if exp else 4, relHt=lastHeight
               )
             else:
-              render = add2dArrays(render, contents, AbarHt=barHt, BbarHt=len(contents), add = len(contents) - barHt)
+              render = add2dArrays(render, contents, AbarHt=barHt, BbarHt=len(contents) - (2 if exp else 0), add = len(contents) - barHt)
               barHt += len(contents) - 4
               hang += len(contents) - 4
 
@@ -196,7 +195,6 @@ def genRender(eq, exp=False):
     else:
       raise Exception(f" Unidentified character: {eq[i]}")
     
-    print2dArray(render)
     i += 1
 
   print("Removing overhead...")
@@ -212,7 +210,6 @@ def genRender(eq, exp=False):
 
   print(f"Finished parsing {eq}")
   lastFinishedBarHt = barHt
-  lastFinishedHang = hang
   return render
 
 
@@ -321,7 +318,7 @@ def print2dArray(arr):
 equation = "\\frac{\\sqrt{x}*\\sqrt{\\frac{2}{3}}}{4}+(\\sqrt{\\frac{5^6}{7}}-\\frac{8}{9^10})"
 equation = r"\sqrt{\frac{\sqrt{1}}{2}}+(3)^{\sqrt{4}}"
 equation = r"\sqrt{\frac{\sqrt{69}{2}}{3}}+(\frac{3}{4})^{\sqrt{4}}"
-equation = r"(log_{2\sqrt{2}}(3))^{\sqrt{2}}+1"
+equation = r"(log_{log_{2}(3)}(3))^{\sqrt{2}}+1"
 r = genRender(equation)
 print2dArray(r)
 
