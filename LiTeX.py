@@ -12,7 +12,9 @@ def genRender(eq, exp=False):
   while i < len(eq):
     print(f"{' ' * (i + len(str(i)) + 31)}V")
     print(f"Parsing char: '{eq[i]}' at index {i} of {eq} with hang {hang}")
-    if eq[i] == " ": pass
+    if eq[i] == " ":
+      i += 1
+      continue
     
     if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "="):
       print(f" Appending digit '{eq[i]}'")
@@ -36,22 +38,22 @@ def genRender(eq, exp=False):
           render = add2dArrays(
             render,
             readGlyph(begWth + "(", -parenHeight),
-            AbarHt=lastFinishedBarHt + hang,
+            AbarHt=barHt,
             BbarHt=lastFinishedBarHt,
           )
+          barHt = max(barHt, lastFinishedBarHt)
           render = add2dArrays(
             render,
             contents,
-            AbarHt=lastFinishedBarHt + hang,
+            AbarHt=barHt,
             BbarHt=lastFinishedBarHt,
           )
           render = add2dArrays(
             render,
             rightParen,
-            AbarHt=lastFinishedBarHt + hang,
+            AbarHt=barHt,
             BbarHt=lastFinishedBarHt,
           )
-          barHt = lastFinishedBarHt + hang
           lastHeight = parenHeight + (7 if exp else 10) + hang
 
           print(f"  Setting index i to {i + j - 1}")
@@ -80,8 +82,8 @@ def genRender(eq, exp=False):
               )
             else:
               render = add2dArrays(render, contents, AbarHt=barHt, BbarHt=len(contents) - (2 if exp else 0), add = len(contents) - barHt)
-              barHt += len(contents) - 4
-              hang += len(contents) - 4
+              barHt += abs(barHt - len(contents))
+              barHt += abs(barHt - len(contents))
 
             print(f"  Setting index i to {i + j - 1}")
             i += j - 1
@@ -168,7 +170,7 @@ def genRender(eq, exp=False):
                 nth = genRender(eq[i + 1 :][: k - 2], True)
                 i += k
                 break
-            
+             
             for k in range(1, len(eq[i:]) + 1):
               if eq[i:][:k].count("{") == eq[i:][:k].count("}"):
                 print(f"Found radical contents: {eq[i:][:k]} (Recursing!)")
@@ -186,11 +188,19 @@ def genRender(eq, exp=False):
                 radical = merge2dArrays(radical, [[True], [True]], len(radicand[0]) + len(nth[0]) + 4, len(radicand) - 1)
                 
                 render = add2dArrays(render, radical, AbarHt = barHt, BbarHt = lastFinishedBarHt)
-                barHt = lastFinishedBarHt + hang
+                barHt = max(barHt, lastFinishedBarHt) + hang
                 lastHeight = len(radical) + hang
                 i += k - 1
                 break
             break
+        
+        elif eq[i:][j - 1].isdigit() or eq[i:][j - 1] in ("+", "-", "*", "/", "=") or j == len(eq) - 1:
+          print(f"Found special character: \'{eq[i + 1 :][:j]}\'")
+          gl = readGlyph(begWth + eq[i + 1 :][:j])
+          render = add2dArrays(render, gl, AbarHt = barHt)
+          lastHeight = gl
+          i += 1
+          break
 
     else:
       raise Exception(f" Unidentified character: {eq[i]}")
@@ -319,6 +329,8 @@ equation = "\\frac{\\sqrt{x}*\\sqrt{\\frac{2}{3}}}{4}+(\\sqrt{\\frac{5^6}{7}}-\\
 equation = r"\sqrt{\frac{\sqrt{1}}{2}}+(3)^{\sqrt{4}}"
 equation = r"\sqrt{\frac{\sqrt{69}{2}}{3}}+(\frac{3}{4})^{\sqrt{4}}"
 equation = r"(log_{log_{2}(3)}(3))^{\sqrt{2}}+1"
+equation = r"1+e^{2\pi}-(3x\sqrt{\frac{sin(4)}{5}log_{6}(7)*8}/9)^{10}"
+equation = r"1 + e^{2\pi} - (3x \sqrt{ \frac{ sin(4) }{ 5 } log_{6}(7) * 8} / 9)^{ 10 }"
 r = genRender(equation)
 print2dArray(r)
 
