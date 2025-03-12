@@ -1,4 +1,7 @@
+import Evaluator
+
 lastFinishedBarHt = None
+logging = True
 
 def genRender(eq, exp=False):
   global lastFinishedBarHt
@@ -82,8 +85,7 @@ def genRender(eq, exp=False):
               )
             else:
               render = add2dArrays(render, contents, AbarHt=barHt, BbarHt=len(contents) - (2 if exp else 0), add = len(contents) - barHt)
-              barHt += abs(barHt - len(contents))
-              barHt += abs(barHt - len(contents))
+              barHt += abs(min(barHt - len(contents), 0))
 
             print(f"  Setting index i to {i + j - 1}")
             i += j - 1
@@ -205,6 +207,8 @@ def genRender(eq, exp=False):
     else:
       raise Exception(f" Unidentified character: {eq[i]}")
     
+    if logging: print2dArray(render, barHt)
+      
     i += 1
 
   print("Removing overhead...")
@@ -310,12 +314,12 @@ def merge2dArrays(a, b, x, y):
   return a
 
 
-def print2dArray(arr):
-  # arr = [[1 if b else 0 for b in arr[r]] for r in range(len(arr))]
-
-  # for y in range(len(arr)):
-  #  print(f"{' ' * (len(str(len(arr))) - len(str(y)))}{y}: {arr[y]}", end=",\n")
-
+def print2dArray(arr, bh = None):
+  if bh != None:
+    H = [[False, False]] * len(arr)
+    H[len(H) - 1 - bh] = [True, False]
+    arr = add2dArrays(H, arr)
+  
   print(f"Dimensions: {len(arr[0])}x{len(arr)}")
   print("--PRERENDER--")
   for y in range(len(arr)):
@@ -325,11 +329,13 @@ def print2dArray(arr):
   print("--PRERENDER--")
   
   
-equation = "\\frac{\\sqrt{x}*\\sqrt{\\frac{2}{3}}}{4}+(\\sqrt{\\frac{5^6}{7}}-\\frac{8}{9^10})"
-equation = r"\sqrt{\frac{\sqrt{1}}{2}}+(3)^{\sqrt{4}}"
-equation = r"\sqrt{\frac{\sqrt{69}{2}}{3}}+(\frac{3}{4})^{\sqrt{4}}"
-equation = r"(log_{log_{2}(3)}(3))^{\sqrt{2}}+1"
 equation = r"1+e^{2\pi}-(3x\sqrt{\frac{sin(4)}{5}log_{6}(7)*8}/9)^{10}"
-equation = r"f(x)=1 + e^{2\pi} - (3x \sqrt{ \frac{ sin(4) }{ 5 } log_{6}(7) * 8} / 9)^{ 10 }"
+equation = r"1 + e^{2} - (3 * \sqrt{ \frac{sin(4)}{5^{ 2 }} + 8 * log_{6}(7)} / 9)^{ 2 }"
+equation = r"\frac{1}{2^{3}}log_{4}(5)"
+equation = r"\frac{1}{2}log_{4}(5)"
+equation = r"log_{4}(5)"
+
+
+# equation = r"1+2"
 r = genRender(equation)
-print2dArray(r)
+if not logging: print2dArray(r)
