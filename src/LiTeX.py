@@ -335,7 +335,7 @@ equation = r"\frac{1}{2^{3}}log_{4}(5)"
 equation = r"\frac{1}{2}log_{4}(5)"
 equation = r"log_{4}(5)"
 
-equation = r"2^{3}"
+equation = r"1-(1+2)"
 print(Evaluator.Evaluate(equation))
 
 # r = genRender(equation)
