@@ -1,3 +1,5 @@
+import math
+
 # Evaluates an expression in LiTeX format
 def Evaluate(eq):
   print(f"Evaluating \'{eq}\'")
@@ -21,8 +23,32 @@ def Evaluate(eq):
 # One iteration of evaluation
 # Follows strict PEDMAS
 def EvalIteration(eq):
+  # P - Parenthetical function (trig)
+  if any(trigs in eq for trigs in ["sin", "cos", "tan", "sec", "csc", "cot"]):
+    func = "sin" if "sin" in eq else (
+           "cos" if "cos" in eq else (
+           "tan" if "tan" in eq else (
+           "csc" if "csc" in eq else (
+           "sec" if "sec" in eq else (
+           "cot" if "cot" in eq else (
+           None))))))
+
+    operate = {'sin': lambda x: math.sin(x),
+               'cos': lambda x: math.cos(x),
+               'tan': lambda x: math.tan(x),
+               'csc': lambda x: 1 / math.sin(x),
+               'sec': lambda x: 1 / math.sec(x),
+               'cot': lambda x: 1 / math.cot(x)}
+               
+    print(eq[eq.index(func) + 3:])
+    contents = Between(eq[eq.index(func) + 3:], "(", ")")
+    
+    print(f"Found trig function {func} with contents {contents}")
+    eq = eq.replace(f"{func}({contents})", str(operate[func](Evaluate(contents))))
+    return eq
+    
   # P - Parenthesis
-  if "(" in eq:
+  elif "(" in eq:
     contents = Between(eq, "(", ")")
     eq = eq.replace(f"({contents})", str(Evaluate(contents)))
     return eq
@@ -39,6 +65,14 @@ def EvalIteration(eq):
     eq = eq.replace(base + "^{"+exp+"}", str(float(base) ** float(exp)))
     return eq
   
+  elif r"\sqrt" in eq:
+    start = eq.find(r"\sqrt") + 5
+    nthroot = Between(eq[start:], "{", "}")
+    contents = Between(eq[start + len(nthroot) + 2:], "{", "}")
+    
+    eq = eq.replace(r"\sqrt{"+nthroot+"}" + "{"+contents+"}", str(pow(Evaluate(contents), 1 / Evaluate(nthroot))))
+    return eq
+    
   # D - Division (Fractions have priority)
   elif r"\frac" in eq:
     start = eq.find(r"\frac") + 5

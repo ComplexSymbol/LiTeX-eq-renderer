@@ -1,7 +1,7 @@
 import Evaluator
 
 lastFinishedBarHt = None
-logging = True
+logging = False
 
 def genRender(eq, exp=False):
   global lastFinishedBarHt
@@ -19,7 +19,7 @@ def genRender(eq, exp=False):
       i += 1
       continue
     
-    if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "="):
+    if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "=", ".", "_"):
       print(f" Appending digit '{eq[i]}'")
       char = readGlyph(begWth + eq[i])
       render = add2dArrays(render, char, AbarHt=barHt)
@@ -169,7 +169,9 @@ def genRender(eq, exp=False):
                   break
                 
                 print(f"Found nth root: {eq[i:][:k]} (Recursing!)")
-                nth = genRender(eq[i + 1 :][: k - 2], True)
+                if eq[i + 1 :][: k - 2] != "2":
+                  nth = genRender(eq[i + 1 :][: k - 2], True)
+                
                 i += k
                 break
              
@@ -335,8 +337,8 @@ equation = r"\frac{1}{2^{3}}log_{4}(5)"
 equation = r"\frac{1}{2}log_{4}(5)"
 equation = r"log_{4}(5)"
 
-equation = r"1-(1+2)"
-print(Evaluator.Evaluate(equation))
+equation = r"\sqrt{2}{5}"
+answer = Evaluator.Evaluate(equation)
 
-# r = genRender(equation)
-# if not logging: print2dArray(r)
+r = genRender(equation + "=" + str(answer).replace("-", "_"))
+if not logging: print2dArray(r)
