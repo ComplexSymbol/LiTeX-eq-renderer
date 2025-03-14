@@ -294,6 +294,7 @@ equation = r"log_{4}(5)"
 equation = r"3sin(\frac{1+\sqrt{2}{5}}{2})"
 
 answer = Evaluator.Evaluate(equation)
+print(answer)
 
 r = genRender(equation + "=" + str(answer).replace("-", "_"))
 if not logging: print2dArray(r)

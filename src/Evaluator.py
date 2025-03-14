@@ -1,7 +1,16 @@
 import math
 
-# Evaluates an expression in LiTeX format
+trigs = {'sin': lambda x: math.sin(x),
+         'cos': lambda x: math.cos(x),
+         'tan': lambda x: math.tan(x),
+         'csc': lambda x: 1 / math.sin(x),
+         'sec': lambda x: 1 / math.sec(x),
+         'cot': lambda x: 1 / math.cot(x)}
+
+# Follows strict PEDMAS
 def Evaluate(eq):
+  global trigs
+  
   print(f"Standardizing eq : '{eq}'")
   # Add implicit multiplication
   for i in range(len(eq) - 1):
@@ -18,26 +27,6 @@ def Evaluate(eq):
   
   print(f"Evaluating \'{eq}\'")
   
-  # Evaluate until finished
-  while not isFloat(eq):
-    print(f"Equation \'{eq}\' needs further evaluation")
-    eq = EvalIteration(eq);
-    print(f"Equation is now \'{eq}\' after another iteration")
-      
-  print(f"Equation \'{eq}\' is done being evaluated")
-  
-  sign = 1
-  if eq[0] == "-":
-    sign = -1
-    eq = eq[1:]
-  
-  ans = float(eq)
-  return sign * ans;
-  
-# One iteration of evaluation
-# Follows strict PEDMAS
-def EvalIteration(eq):
-  
   # First, change constants into numbers
   specials = ["pi", "e"]
   values = { 'e': math.e, 
@@ -49,8 +38,9 @@ def EvalIteration(eq):
                     str(values[specials[tries.index(True)]]))
     tries[tries.index(True)] = False
   
+  
   # P - Parenthetical function (trig)
-  if any(trigs in eq for trigs in ["sin", "cos", "tan", "sec", "csc", "cot"]):
+  while any(trigs in eq for trigs in ["sin", "cos", "tan", "sec", "csc", "cot"]):
     func = "sin" if "sin" in eq else (
            "cos" if "cos" in eq else (
            "tan" if "tan" in eq else (
@@ -59,22 +49,14 @@ def EvalIteration(eq):
            "cot" if "cot" in eq else (
            None))))))
 
-    operate = {'sin': lambda x: math.sin(x),
-               'cos': lambda x: math.cos(x),
-               'tan': lambda x: math.tan(x),
-               'csc': lambda x: 1 / math.sin(x),
-               'sec': lambda x: 1 / math.sec(x),
-               'cot': lambda x: 1 / math.cot(x)}
-
     contents = Between(eq[eq.index(func) + 3:], "(", ")")
-    
+
     print(f"  Found trig function {func} with contents {contents}")
     eq = eq.replace(f"{func}({contents})", 
-                    str(operate[func](Evaluate(contents))))
-    return eq
+                    str(SpecialTrig(func, Evaluate(contents), False)))
   
   # P - Parenthetical function (log)  
-  if "log" in eq: 
+  while "log" in eq: 
     print("  Found logarithm!")
     location = eq.index("log")
     base = Between(eq[location + 4:], "{", "}")
@@ -82,18 +64,16 @@ def EvalIteration(eq):
     
     eq = eq.replace("log_{"+base+"}" + f"({contents})", 
                     str(math.log(Evaluate(contents), Evaluate(base))))
-    return eq
-    
+
   # P - Parenthesis
-  elif "(" in eq:
+  while "(" in eq:
     contents = Between(eq, "(", ")")
     
     eq = eq.replace(f"({contents})", 
                     str(Evaluate(contents)))
-    return eq
-  
+
   # E - Exponents
-  elif "^" in eq:
+  while "^" in eq:
     exp = Between(eq[eq.index("^"):], "{", "}")
     base = None
     
@@ -104,30 +84,27 @@ def EvalIteration(eq):
     print(f"  Found exponent with base {base} and exponent {exp}")
     eq = eq.replace(base + "^{"+exp+"}",
                     str(float(base) ** float(exp)))
-    return eq
-  
+
   # E - Exponents (square root)
-  elif r"\sqrt" in eq:
+  while r"\sqrt" in eq:
     start = eq.find(r"\sqrt") + 5
     nthroot = Between(eq[start:], "{", "}")
     contents = Between(eq[start + len(nthroot) + 2:], "{", "}")
-    
+
     eq = eq.replace(r"\sqrt{"+nthroot+"}" + "{"+contents+"}", 
                     str(pow(Evaluate(contents), 1 / Evaluate(nthroot))))
-    return eq
-    
+
   # D - Division (Fractions have priority)
-  elif r"\frac" in eq:
+  while r"\frac" in eq:
     start = eq.find(r"\frac") + 5
     numer = Between(eq[start:], "{", "}")
     denom = Between(eq[start + len(numer) + 2:], "{", "}")
     
     eq = eq.replace(r"\frac{"+numer+"}" + "{"+denom+"}", 
                     str(Evaluate(numer) / Evaluate(denom)))
-    return eq
-  
+
   # DMAS - In that order
-  elif set(eq) & frozenset("/*+-"):
+  while set(eq) & frozenset("/*+-"):
     curOp = "/" if "/" in eq else (
             "*" if "*" in eq else (
             "+" if "+" in eq else (
@@ -154,7 +131,82 @@ def EvalIteration(eq):
     print(f"  Result: {operate[curOp](first, second)}")
     eq = eq.replace(f"{first}{curOp}{second}", 
                     str(operate[curOp](first, second)))
-    return eq
+  
+  sign = 1
+  if eq[0] == "-":
+    sign = -1
+    eq = eq[1:]
+  
+  ans = float(eq)
+  print(f"{sign}, {ans}; {sign * ans}")
+  return sign * ans;
+
+def primeFactors(n):
+  i = 2
+  factors = []
+  while i * i <= n:
+    if n % i:
+      i += 1
+    else:
+      n //= i
+      factors.append(i)
+  if n > 1:
+    factors.append(n)
+  return factors
+
+def SpecialTrig(func, x, simplify):
+  global trigs
+  
+  if not simplify:
+    return trigs[func](x)
+  
+  if (x == math.pi / 6):
+    if func == "sin":
+      return r"\frac{1}{2}"
+    elif func == "cos":
+      return r"\frac{\sqrt{2}{3}}{2}"
+    elif func == "tan":
+      return r"\frac{\sqrt{2}{3}}{3}"
+    elif func == "sec":
+      return r"\frac{2\sqrt{2}{3}}{3}"
+    elif func == "cot":
+      return r"\sqrt{2}{3}"
+  elif x == math.pi / 4:
+    if func == "sin":
+      return r"\frac{\sqrt{2}{2}}{2}"
+    elif func == "cos":
+      return r"\frac{\sqrt{2}{2}}{2}"
+    elif func == "csc":
+      return r"\sqrt{2}{2}"
+    elif func == "sec":
+      return r"\sqrt{2}{2}"
+  elif x == math.pi / 3:
+    if func == "sin":
+      return SpecialTrig("cos", math.pi / 6, simplify)
+    elif func == "cos":
+      return SpecialTrig("sin", math.pi / 6, simplify)
+    elif func == "tan":
+      return SpecialTrig("cot", math.pi / 6, simplify)
+    elif func == "csc":
+      return SpecialTrig("sec", math.pi / 6, simplify)
+    elif func == "sec":
+      return SpecialTrig("csc", math.pi / 6, simplify)
+    elif func == "cot":
+      return SpecialTrig("tan", math.pi / 6, simplify)
+  elif x > math.pi / 2 and x < math.pi:
+    if func == "sin" or func == "csc":
+      return SpecialTrig(func, math.pi - x, simplify)
+    else: return "-" + SpecialTrig(func, math.pi - x, simplify)
+  elif x > math.pi and x < 3 * math.pi / 2:
+    if func == "cos" or func == "sec":
+      return SpecialTrig(func, math.pi - x, simplify)
+    else: return "-" + SpecialTrig(func, math.pi - x, simplify)
+  elif x > math.pi and x < 3 * math.pi / 2:
+    if func == "tan" or func == "cot":
+      return SpecialTrig(func, math.pi - x, simplify)
+    else: return "-" + SpecialTrig(func, math.pi - x, simplify)
+  
+  return trigs[func](x)
 
 # Finds string subset between char1 and char2, with nesting support
 def Between(string, char1, char2):
