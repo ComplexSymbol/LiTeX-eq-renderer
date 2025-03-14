@@ -2,6 +2,9 @@ import math
 
 # Evaluates an expression in LiTeX format
 def Evaluate(eq):
+  print(f"Standardizing eq : '{eq}'")
+  eq = Standardize(eq)
+  
   print(f"Evaluating \'{eq}\'")
   
   # Evaluate until finished
@@ -23,6 +26,18 @@ def Evaluate(eq):
 # One iteration of evaluation
 # Follows strict PEDMAS
 def EvalIteration(eq):
+  
+  # First, change constants into numbers
+  specials = ["pi", "e"]
+  values = { 'e': math.e, 
+             'pi': math.pi,
+           }
+  tries = [("\\" + sp) in eq for sp in specials]
+  while any(tries):
+    eq = eq.replace("\\" + specials[tries.index(True)], 
+                    str(values[specials[tries.index(True)]]))
+    tries[tries.index(True)] = False
+  
   # P - Parenthetical function (trig)
   if any(trigs in eq for trigs in ["sin", "cos", "tan", "sec", "csc", "cot"]):
     func = "sin" if "sin" in eq else (
@@ -39,38 +54,55 @@ def EvalIteration(eq):
                'csc': lambda x: 1 / math.sin(x),
                'sec': lambda x: 1 / math.sec(x),
                'cot': lambda x: 1 / math.cot(x)}
-               
-    print(eq[eq.index(func) + 3:])
+
     contents = Between(eq[eq.index(func) + 3:], "(", ")")
     
-    print(f"Found trig function {func} with contents {contents}")
-    eq = eq.replace(f"{func}({contents})", str(operate[func](Evaluate(contents))))
+    print(f"  Found trig function {func} with contents {contents}")
+    eq = eq.replace(f"{func}({contents})", 
+                    str(operate[func](Evaluate(contents))))
+    return eq
+  
+  # P - Parenthetical function (log)  
+  if "log" in eq: 
+    print("  Found logarithm!")
+    location = eq.index("log")
+    base = Between(eq[location + 4:], "{", "}")
+    contents = Between(eq[location + len(base) + 2:], "(", ")")
+    
+    eq = eq.replace("log_{"+base+"}" + f"({contents})", 
+                    str(math.log(Evaluate(contents), Evaluate(base))))
     return eq
     
   # P - Parenthesis
   elif "(" in eq:
     contents = Between(eq, "(", ")")
-    eq = eq.replace(f"({contents})", str(Evaluate(contents)))
+    
+    eq = eq.replace(f"({contents})", 
+                    str(Evaluate(contents)))
     return eq
   
   # E - Exponents
   elif "^" in eq:
     exp = Between(eq[eq.index("^"):], "{", "}")
-    base = "0"
+    base = None
     
     i = 0
     while not isFloat(eq[:eq.index("^")][i:]): i += 1
     base = eq[:eq.index("^")][i:]
     
-    eq = eq.replace(base + "^{"+exp+"}", str(float(base) ** float(exp)))
+    print(f"  Found exponent with base {base} and exponent {exp}")
+    eq = eq.replace(base + "^{"+exp+"}",
+                    str(float(base) ** float(exp)))
     return eq
   
+  # E - Exponents (square root)
   elif r"\sqrt" in eq:
     start = eq.find(r"\sqrt") + 5
     nthroot = Between(eq[start:], "{", "}")
     contents = Between(eq[start + len(nthroot) + 2:], "{", "}")
     
-    eq = eq.replace(r"\sqrt{"+nthroot+"}" + "{"+contents+"}", str(pow(Evaluate(contents), 1 / Evaluate(nthroot))))
+    eq = eq.replace(r"\sqrt{"+nthroot+"}" + "{"+contents+"}", 
+                    str(pow(Evaluate(contents), 1 / Evaluate(nthroot))))
     return eq
     
   # D - Division (Fractions have priority)
@@ -79,7 +111,8 @@ def EvalIteration(eq):
     numer = Between(eq[start:], "{", "}")
     denom = Between(eq[start + len(numer) + 2:], "{", "}")
     
-    eq = eq.replace(r"\frac{"+numer+"}" + "{"+denom+"}", str(Evaluate(numer) / Evaluate(denom)))
+    eq = eq.replace(r"\frac{"+numer+"}" + "{"+denom+"}", 
+                    str(Evaluate(numer) / Evaluate(denom)))
     return eq
   
   # DMAS - In that order
@@ -102,17 +135,37 @@ def EvalIteration(eq):
     
     after = eq[eq.index(curOp) + 1:]
     i = len(after)
-    print(f"'{after[:i]}'")
     while not isFloat(after[:i]):
-      print(after[:i])
       i -= 1
     second = after[:i]
     
     print(f"  Found operator \'{curOp}\' with first \'{first}\' and second \'{second}\'")
     print(f"  Result: {operate[curOp](first, second)}")
-    eq = eq.replace(f"{first}{curOp}{second}", str(operate[curOp](first, second)))
+    eq = eq.replace(f"{first}{curOp}{second}", 
+                    str(operate[curOp](first, second)))
     return eq
-    
+  
+# Standardizes eq by adding implicit numbers in.
+# Also adds implicit multiplication sign
+# Also replaces special characters with numbers
+# e.g: \sqrt{x} = \sqrt{2}{x}; 
+# log(x) = log_{10}(x); 
+# 3\sqrt{x} = 3*\sqrt{2}{x}
+def Standardize(eq):
+  for i in range(len(eq) - 1):
+    # Add implicit multiplication
+    # 3 main causes: num*func, paren*func, paren*paren
+    if ((eq[i].isdigit() and eq[i + 1] == "\\") or
+        (eq[i].isdigit() and eq[i + 1] == "(") or
+        (eq[i] not in ['+', '-', '*', '/'] and eq[i + 1] == "\\") or
+        (eq[i] == ")" and eq[i + 1] == "\\") or
+        (eq[i] == ")" and eq[i + 1] == "(") or
+        (eq[i] == "}" and eq[i + 1] == "(") or
+        (eq[i] == "}" and eq[i + 1].isdigit())):
+      eq = eq[:i + 1] + "*" + eq[i + 1:]
+
+  return eq
+
 # Finds string subset between char1 and char2, with nesting support
 def Between(string, char1, char2):
   for i in range(len(string)):
@@ -122,6 +175,8 @@ def Between(string, char1, char2):
   raise ValueError(f"Unable to find contents between {char1} and {char2}")
       
 def isFloat(string):
+  if string[0] == "+": return False
+  
   try:
     if string[0] == "-": string = string[1:]
     float(string)

@@ -80,21 +80,23 @@ def genRender(eq, exp=False):
       try:
         esc = Evaluator.Between(eq[i:], "\\", "{")
       except ValueError: pass
-      
+    
       # Escape character (Special Character)
-      if esc == None:
-        specials = ["pi"]
+      if esc == None or not esc.isalpha():
+        specials = ["pi", "e"]
         tries = [eq[i + 1:].startswith(ch) for ch in specials]
         
         # None of the accepted special characters were found
         if not any(tries):
           raise ValueError(f"Unidentified special character starting at: {eq[i:]}")
         
+        print(f"Found special character: {specials[tries.index(True)]}")
+        
         # Generate render for character, then append it to the render and increment i
-        char = readGlyph(begWth + specials[tries.indexOf(True)])
-        render = Add2dArrays(render, char, AbarHt = barHt)
+        char = readGlyph(begWth + specials[tries.index(True)])
+        render = add2dArrays(render, char, AbarHt = barHt)
         lastHeight = len(char)
-        i += len(specials[tries.indexOf(True)]) + 1
+        i += len(specials[tries.index(True)])
       
       # Since it's not an escape character, it must be a function
       elif esc == "frac":
@@ -289,8 +291,8 @@ equation = r"\frac{1}{2^{3}}log_{4}(5)"
 equation = r"\frac{1}{2}log_{4}(5)"
 equation = r"log_{4}(5)"
 
-equation = r"\sqrt{2}{1+\frac{1}{2}}"
-
+equation = r"sin(\frac{1 + \sqrt{2}{5}}{2})"
+equation = r"3\pi\pi+2^{2}*2"
 
 answer = Evaluator.Evaluate(equation)
 
