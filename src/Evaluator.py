@@ -21,7 +21,6 @@ def Evaluate(eq):
         (eq[i] not in ['+', '-', '*', '/', '('] and eq[i + 1] == "\\") or # \pi\e, X: (\pi
         (eq[i] == ")" and eq[i + 1] == "\\") or # ...4)\pi
         (eq[i] == ")" and eq[i + 1] == "(") or # ...3)(6...
-        (eq[i] == "}" and eq[i + 1] == "(") or # ...8}(5...
         (eq[i] == "}" and eq[i + 1].isdigit())): # ...2}7
       eq = eq[:i + 1] + "*" + eq[i + 1:] # Insert multiplication
   
@@ -59,7 +58,7 @@ def Evaluate(eq):
   while "log" in eq: 
     print("  Found logarithm!")
     location = eq.index("log")
-    base = Between(eq[location + 4:], "{", "}")
+    base = Between(eq[location + 3:], "{", "}")
     contents = Between(eq[location + len(base) + 2:], "(", ")")
     
     eq = eq.replace("log_{"+base+"}" + f"({contents})", 
@@ -206,7 +205,7 @@ def SpecialTrig(func, x, simplify):
       return SpecialTrig(func, math.pi - x, simplify)
     else: return "-" + SpecialTrig(func, math.pi - x, simplify)
   
-  return trigs[func](x)
+  return str(trigs[func](x))
 
 # Finds string subset between char1 and char2, with nesting support
 def Between(string, char1, char2):

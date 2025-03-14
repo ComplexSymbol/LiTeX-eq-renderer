@@ -1,4 +1,5 @@
 import Evaluator
+import math
 
 lastFinishedBarHt = None
 logging = False
@@ -19,7 +20,7 @@ def genRender(eq, exp=False):
       i += 1
       continue
     
-    if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "=", ".", "_"):
+    if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "=", ".", "~"):
       print(f" Appending digit '{eq[i]}'")
       char = readGlyph(begWth + eq[i])
       render = add2dArrays(render, char, AbarHt=barHt)
@@ -291,10 +292,13 @@ equation = r"\frac{1}{2^{3}}log_{4}(5)"
 equation = r"\frac{1}{2}log_{4}(5)"
 equation = r"log_{4}(5)"
 
-equation = r"3sin(\frac{1+\sqrt{2}{5}}{2})"
+equation = r"log_{2}(3)"
 
 answer = Evaluator.Evaluate(equation)
 print(answer)
 
-r = genRender(equation + "=" + str(answer).replace("-", "_"))
+r = genRender(equation + "=" + str(answer).replace("-", "~"))
 if not logging: print2dArray(r)
+
+
+
