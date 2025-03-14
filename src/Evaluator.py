@@ -119,7 +119,7 @@ def Between(string, char1, char2):
     if string[i] == char2 and (string[:i].count(char1) == string[:i + 1].count(char2)):
       return string[string.index(char1) + 1 : i]
   
-  raise Exception(f"Unable to find contents between {char1} and {char2}")
+  raise ValueError(f"Unable to find contents between {char1} and {char2}")
       
 def isFloat(string):
   try:

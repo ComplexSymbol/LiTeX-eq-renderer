@@ -24,187 +24,139 @@ def genRender(eq, exp=False):
       char = readGlyph(begWth + eq[i])
       render = add2dArrays(render, char, AbarHt=barHt)
       lastHeight = len(char)
-
+  
     elif eq[i] == "(":
       print(f" Found parenthesis")
-      for j in range(1, len(eq[i:]) + 1):
-        if eq[i:][:j].count("(") == eq[i:][:j].count(")"):
-          print(
-            f"  Found end of parenthesis at index {i + j} [contents: {eq[i:][:j]}]"
-          )
-          print(f"  Recursing contents {eq[i+1:][:j-2]}")
-
-          contents = genRender(eq[i + 1 :][: j - 2], exp)
-          parenHeight = max(0, len(contents) - (7 if exp else 10))
-          rightParen = readGlyph(begWth + ")", parenHeight)
-
-          render = add2dArrays(
-            render,
-            readGlyph(begWth + "(", -parenHeight),
-            AbarHt=barHt,
-            BbarHt=lastFinishedBarHt,
-          )
-          barHt = max(barHt, lastFinishedBarHt)
-          render = add2dArrays(
-            render,
-            contents,
-            AbarHt=barHt,
-            BbarHt=lastFinishedBarHt,
-          )
-          render = add2dArrays(
-            render,
-            rightParen,
-            AbarHt=barHt,
-            BbarHt=lastFinishedBarHt,
-          )
-          lastHeight = parenHeight + (7 if exp else 10) + hang
-
-          print(f"  Setting index i to {i + j - 1}")
-          i += j - 1
-          break
-
-        if j == len(eq[i:]):
-          raise Exception("Unfinished parenthesis")
-
+      contents = Evaluator.Between(eq, "(", ")")
+      parenHeight = max(0, len(genRender(contents, exp)) - (7 if exp else 10))
+      rightParen = readGlyph(begWth + ")", parenHeight)
+  
+      render = add2dArrays(
+        render,
+        readGlyph(begWth + "(", -parenHeight),
+        AbarHt=barHt,
+        BbarHt=lastFinishedBarHt,
+      )
+      barHt = max(barHt, lastFinishedBarHt)
+      render = add2dArrays(
+        render,
+        genRender(contents, exp),
+        AbarHt=barHt,
+        BbarHt=lastFinishedBarHt,
+      )
+      render = add2dArrays(
+        render,
+        rightParen,
+        AbarHt=barHt,
+        BbarHt=lastFinishedBarHt,
+      )
+      lastHeight = parenHeight + (7 if exp else 10) + hang
+      
+      print(f"  setting i to {len(contents) + 1}")
+      i += len(contents) + 1
+    
     elif eq[i] == "^" or eq[i] == "_":
-      pwr = eq[i] == "^"
-      i += 1
+      isPwr = eq[i] == "^"
       print(f"Found exponent/subscript at index {i}")
-
-      if eq[i] == "{":
-        print(f" Found exponent/subscript brace")
-        for j in range(1, len(eq[i:]) + 1):
-          if eq[i:][:j].count("{") == eq[i:][:j].count("}"):
-            print(f"  Found end of exponent/subscript brace at index {i + j} [contents: {eq[i:][:j]}]")
-            print(f"  Recursing contents {eq[i+1:][:j-2]}")
-
-            contents = genRender(eq[i + 1 :][: j - 2], True)
-            if pwr:
-              render = add2dArrays(
-                render, contents, overlap=3 if exp else 4, relHt=lastHeight
-              )
-            else:
-              render = add2dArrays(render, contents, AbarHt=barHt, BbarHt=len(contents) - (2 if exp else 0), add = len(contents) - barHt)
-              barHt += abs(min(barHt - len(contents), 0))
-
-            print(f"  Setting index i to {i + j - 1}")
-            i += j - 1
-            break
-
-        lastHeight = lastHeight + ((len(contents) - (3 if exp else 4)) if pwr else 2)
-        if j == len(eq[i:]):
-          raise Exception("Unfinished exponential brace")
+      
+      contents = Evaluator.Between(eq[i:], "{", "}")
+      ln = len(contents)
+      contents = genRender(contents, True)
+      
+      if isPwr:
+        render = add2dArrays(
+          render, contents, overlap=3 if exp else 4, relHt=lastHeight
+        )
+      else:
+        render = add2dArrays(render, contents, AbarHt=barHt, BbarHt=len(contents) - (2 if exp else 0), add = len(contents) - barHt)
+        barHt += abs(min(barHt - len(contents), 0))
+      
+      i += ln + 2
     
     elif eq[i] == "\\":
       print("Found escape sequence")
-      for j in range(1, len(eq[i:]) + 1):
-        if eq[i:][j - 1] == "{":
-          print(
-            f" Found end of escape sequence/start of contents (i:{i}, j:{j}), esc: {eq[i:][:j-1]}"
-          )
-          
-          esc = eq[i:][: j - 1]
-          i += j - 1
-
-          if esc == "\\frac":
-            print("  Found fraction")
-            for repeat in range(2):
-              for k in range(1, len(eq[i:]) + 1):
-                if eq[i:][:k].count("{") == eq[i:][:k].count("}"):
-                  print(
-                    f"   Found {'numerator' if repeat == 0 else 'denominator'}: {eq[i:][:k]} (Recursing!)"
-                  )
-                  num = (
-                    genRender(eq[i + 1 :][: k - 2], True)
-                    if repeat == 0
-                    else num
-                  )
-                  den = (
-                    genRender(eq[i + 1 :][: k - 2], True)
-                    if repeat == 1
-                    else None
-                  )
-
-                  print(f"Setting i to {i + k}")
-                  i += k
-                  break
-
-            fraction = [
-              [False] * (max(len(num[0]), len(den[0])) + 2 + (max(len(num[0]), len(den[0])) % 2))
-              for _ in range(len(num) + len(den) + 2)
-            ]
-            fraction = merge2dArrays(
-              fraction,
-              num,
-              (len(fraction[0]) // 2) - (len(num[0]) // 2),
-              len(den) + 2,
-            )
-            fraction = merge2dArrays(
-              fraction,
-              den,
-              (len(fraction[0]) // 2) - (len(den[0]) // 2),
-              0,
-            )
-            fraction = merge2dArrays(
-              fraction,
-              [[True] * (len(fraction[0]) - 1)],
-              1,
-              len(den) + 1,
-            )
-            render = add2dArrays(
-              render, fraction, AbarHt=barHt, BbarHt=len(den)
-            )
-            barHt = max(barHt, len(den)) + hang
-            lastHeight = len(fraction) + hang
-            i -= 1
-            break
-          
-          elif esc == "\\sqrt":
-            print("Found radical")
-            nth = [[False, False]]
-            
-            for k in range(1, len(eq[i:]) + 1):
-              if eq[i:][:k].count("{") == eq[i:][:k].count("}"):
-                if not (False if k + i == len(eq) else eq[i:][k] == "{"):
-                  break
-                
-                print(f"Found nth root: {eq[i:][:k]} (Recursing!)")
-                if eq[i + 1 :][: k - 2] != "2":
-                  nth = genRender(eq[i + 1 :][: k - 2], True)
-                
-                i += k
-                break
-             
-            for k in range(1, len(eq[i:]) + 1):
-              if eq[i:][:k].count("{") == eq[i:][:k].count("}"):
-                print(f"Found radical contents: {eq[i:][:k]} (Recursing!)")
-                radicand = genRender(eq[i + 1 :][: k - 2], exp)
-                
-                rad = [[False, False]] + ([[False, True]] * ((len(radicand) + 1) // 2))
-                rad += [[True, False]] * ((len(radicand) - (len(radicand) + 1) // 2) - 4)
-
-                radical = [[False] * (5 + len(radicand[0]) + len(nth[0])) for _ in range(max(len(radicand) + 2, len(radicand) + len(nth) - 2))]
-                radical = merge2dArrays(radical, nth, 0, 4)
-                radical = merge2dArrays(radical, readGlyph("rad"), len(nth[0]) - 2, 0)
-                radical = merge2dArrays(radical, rad, len(nth[0]) + 1, 4)
-                radical = merge2dArrays(radical, radicand, len(nth[0]) + 3, 0)
-                radical = merge2dArrays(radical, [[True] * (len(radicand[0]) + 3)], len(nth[0]) + 2, len(radicand) + 1)
-                radical = merge2dArrays(radical, [[True], [True]], len(radicand[0]) + len(nth[0]) + 4, len(radicand) - 1)
-                
-                render = add2dArrays(render, radical, AbarHt = barHt, BbarHt = lastFinishedBarHt)
-                barHt = max(barHt, lastFinishedBarHt) + hang
-                lastHeight = len(radical) + hang
-                i += k - 1
-                break
-            break
+      esc = None
+      # Operator or escape character?
+      try:
+        esc = Evaluator.Between(eq[i:], "\\", "{")
+      except ValueError: pass
+      
+      # Escape character (Special Character)
+      if esc == None:
+        specials = ["pi"]
+        tries = [eq[i + 1:].startswith(ch) for ch in specials]
         
-        elif eq[i:][j - 1].isdigit() or eq[i:][j - 1] in ("+", "-", "*", "/", "=") or j == len(eq) - 1:
-          print(f"Found special character: \'{eq[i + 1 :][:j]}\'")
-          gl = readGlyph(begWth + eq[i + 1 :][:j])
-          render = add2dArrays(render, gl, AbarHt = barHt)
-          lastHeight = gl
-          i += 1
-          break
+        # None of the accepted special characters were found
+        if not any(tries):
+          raise ValueError(f"Unidentified special character starting at: {eq[i:]}")
+        
+        # Generate render for character, then append it to the render and increment i
+        char = readGlyph(begWth + specials[tries.indexOf(True)])
+        render = Add2dArrays(render, char, AbarHt = barHt)
+        lastHeight = len(char)
+        i += len(specials[tries.indexOf(True)]) + 1
+      
+      # Since it's not an escape character, it must be a function
+      elif esc == "frac":
+        # Numerator & Denominator for fraction.
+        num = Evaluator.Between(eq[i:], "{", "}")
+        den = Evaluator.Between(eq[i + len(num) + 7:], "{", "}")
+        print(f"Setting i to: {i + len(num) + len(den) + 8}" )
+        i += len(num) + len(den) + 8
+        
+        num = genRender(num, True)
+        den = genRender(den, True)
+
+        fraction = [
+          [False] * (max(len(num[0]), len(den[0])) + 2 + (max(len(num[0]), len(den[0])) % 2))
+          for _ in range(len(num) + len(den) + 2)
+        ]
+        fraction = merge2dArrays(
+          fraction,
+          num,
+          (len(fraction[0]) // 2) - (len(num[0]) // 2),
+          len(den) + 2,
+        )
+        fraction = merge2dArrays(
+          fraction,
+          den,
+          (len(fraction[0]) // 2) - (len(den[0]) // 2),
+          0,
+        )
+        fraction = merge2dArrays(
+          fraction,
+          [[True] * (len(fraction[0]) - 1)],
+          1,
+          len(den) + 1,
+        )
+        render = add2dArrays(
+          render, fraction, AbarHt=barHt, BbarHt=len(den)
+        )
+        barHt = max(barHt, len(den)) + hang
+        lastHeight = len(fraction) + hang
+        
+      elif esc == "sqrt":
+        # Nth root
+        n = Evaluator.Between(eq[i:], "{", "}")
+        radicand = Evaluator.Between(eq[i + len(n) + 7:], "{", "}")
+        i += len(n) + len(radicand) + 8
+        
+        n = genRender(n, True) if n != "2" else [[False, False]]
+        radicand = genRender(radicand, exp)
+        
+        stem = [[False, False]] + ([[False, True]] * ((len(radicand) + 1) // 2))
+        stem += [[True, False]] * ((len(radicand) - (len(radicand) + 1) // 2) - 4)
+        radical = [[False] * (5 + len(radicand[0]) + len(n[0])) for _ in range(max(len(radicand) + 2, len(radicand) + len(n) - 2))]
+        radical = merge2dArrays(radical, n, 0, len(radical) - len(n) - 4)
+        radical = merge2dArrays(radical, readGlyph("rad"), len(n[0]) - 2, 0)
+        radical = merge2dArrays(radical, stem, len(n[0]) + 1, 4)
+        radical = merge2dArrays(radical, radicand, len(n[0]) + 3, 0)
+        radical = merge2dArrays(radical, [[True] * (len(radicand[0]) + 3)], len(n[0]) + 2, len(radicand) + 1)
+        radical = merge2dArrays(radical, [[True], [True]], len(radicand[0]) + len(n[0]) + 4, len(radicand) - 1)
+        
+        render = add2dArrays(render, radical, AbarHt = barHt, BbarHt = lastFinishedBarHt)
+        barHt = max(barHt, lastFinishedBarHt) + hang
+        lastHeight = len(radical) + hang
 
     else:
       raise Exception(f" Unidentified character: {eq[i]}")
@@ -337,7 +289,9 @@ equation = r"\frac{1}{2^{3}}log_{4}(5)"
 equation = r"\frac{1}{2}log_{4}(5)"
 equation = r"log_{4}(5)"
 
-equation = r"\sqrt{2}{5}"
+equation = r"\sqrt{2}{1+\frac{1}{2}}"
+
+
 answer = Evaluator.Evaluate(equation)
 
 r = genRender(equation + "=" + str(answer).replace("-", "_"))
