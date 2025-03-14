@@ -3,7 +3,18 @@ import math
 # Evaluates an expression in LiTeX format
 def Evaluate(eq):
   print(f"Standardizing eq : '{eq}'")
-  eq = Standardize(eq)
+  # Add implicit multiplication
+  for i in range(len(eq) - 1):
+    # 3 main causes: num*func, paren*func, paren*paren
+    if ((eq[i].isdigit() and eq[i + 1] == "\\") or # 5\pi
+        (eq[i].isdigit() and eq[i + 1] == "(") or # 2(3 ...
+        (eq[i].isdigit() and eq[i + 1].isalpha()) or # 9sin(...
+        (eq[i] not in ['+', '-', '*', '/', '('] and eq[i + 1] == "\\") or # \pi\e, X: (\pi
+        (eq[i] == ")" and eq[i + 1] == "\\") or # ...4)\pi
+        (eq[i] == ")" and eq[i + 1] == "(") or # ...3)(6...
+        (eq[i] == "}" and eq[i + 1] == "(") or # ...8}(5...
+        (eq[i] == "}" and eq[i + 1].isdigit())): # ...2}7
+      eq = eq[:i + 1] + "*" + eq[i + 1:] # Insert multiplication
   
   print(f"Evaluating \'{eq}\'")
   
@@ -144,27 +155,6 @@ def EvalIteration(eq):
     eq = eq.replace(f"{first}{curOp}{second}", 
                     str(operate[curOp](first, second)))
     return eq
-  
-# Standardizes eq by adding implicit numbers in.
-# Also adds implicit multiplication sign
-# Also replaces special characters with numbers
-# e.g: \sqrt{x} = \sqrt{2}{x}; 
-# log(x) = log_{10}(x); 
-# 3\sqrt{x} = 3*\sqrt{2}{x}
-def Standardize(eq):
-  for i in range(len(eq) - 1):
-    # Add implicit multiplication
-    # 3 main causes: num*func, paren*func, paren*paren
-    if ((eq[i].isdigit() and eq[i + 1] == "\\") or
-        (eq[i].isdigit() and eq[i + 1] == "(") or
-        (eq[i] not in ['+', '-', '*', '/'] and eq[i + 1] == "\\") or
-        (eq[i] == ")" and eq[i + 1] == "\\") or
-        (eq[i] == ")" and eq[i + 1] == "(") or
-        (eq[i] == "}" and eq[i + 1] == "(") or
-        (eq[i] == "}" and eq[i + 1].isdigit())):
-      eq = eq[:i + 1] + "*" + eq[i + 1:]
-
-  return eq
 
 # Finds string subset between char1 and char2, with nesting support
 def Between(string, char1, char2):

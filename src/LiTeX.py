@@ -291,8 +291,7 @@ equation = r"\frac{1}{2^{3}}log_{4}(5)"
 equation = r"\frac{1}{2}log_{4}(5)"
 equation = r"log_{4}(5)"
 
-equation = r"sin(\frac{1 + \sqrt{2}{5}}{2})"
-equation = r"3\pi\pi+2^{2}*2"
+equation = r"3sin(\frac{1+\sqrt{2}{5}}{2})"
 
 answer = Evaluator.Evaluate(equation)
 
