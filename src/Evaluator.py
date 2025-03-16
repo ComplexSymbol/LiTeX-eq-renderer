@@ -7,11 +7,16 @@ trigs = {'sin': lambda x: math.sin(x),
          'sec': lambda x: 1 / math.sec(x),
          'cot': lambda x: 1 / math.cot(x)}
 
+operate = {'+': lambda x, y: toFloat(x) + toFloat(y),
+           '-': lambda x, y: toFloat(x) - toFloat(y),
+           '*': lambda x, y: toFloat(x) * toFloat(y),
+           '/': lambda x, y: toFloat(x) / toFloat(y)}
+
 # Follows strict PEDMAS
 def Evaluate(eq):
-  global trigs
+  global trigs, operate
   
-  if isFloat(eq):
+  if not 'j' in eq and isFloat(eq):
     return toFloat(eq)
   
   print(f"Standardizing eq : '{eq}'")
@@ -127,11 +132,6 @@ def Evaluate(eq):
             "+" if "+" in eq else (
             "-" if "-" in eq else (
             None))))
-
-    operate = {'+': lambda x, y: toFloat(x) + toFloat(y),
-               '-': lambda x, y: toFloat(x) - toFloat(y),
-               '*': lambda x, y: toFloat(x) * toFloat(y),
-               '/': lambda x, y: toFloat(x) / toFloat(y)}
     
     i = 0
     before = eq[:eq.index(curOp)]
@@ -251,18 +251,7 @@ def toFloat(string):
   
   # Complex or imaginary
   if "j" in string:
-    # Imaginary
-    if string[-1] == "j":
-      return float(string[:-1]) * 1j
-    
-    # Complex
-    else:
-      # (a +/- bj) -> a +/- b
-      string = string.replace("(", "").replace(")", "").replace("j", "")
-      print(string)
-      string, sign = (string.rsplit("+"), 1) if "+" in string else (string.rsplit("-"), -1)
-      print(string)
-      return round(float(string[0]), 14) + (sign * 1j * round(float(string[1]), 14))
+    return complex(round(complex(string).real, 14), round(complex(string).imag, 14))
   
   else: return round(float(string), 14)
   

@@ -84,7 +84,7 @@ def genRender(eq, exp=False):
     
       # Escape character (Special Character)
       if esc == None or not esc.isalpha():
-        specials = ["pi", "e"]
+        specials = ["pi", "e", 'im']
         tries = [eq[i + 1:].startswith(ch) for ch in specials]
         
         # None of the accepted special characters were found
@@ -285,14 +285,14 @@ def print2dArray(arr, bh = None):
     print()
   print("--PRERENDER--")
   
-  
+
 equation = r"1+\e^{2\pi}-(3\sqrt{2}{\frac{sin(1)}{5}log_{2}(13)*8}/9)"
-equation = r"\sqrt{2}{~4}"
+equation = r"4\sqrt{2}{~4}+3"
 
 answer = Evaluator.Evaluate(equation)
 print(answer)
 
-r = genRender(equation + "=" + str(answer).replace("-", "~").replace("j", "i").replace("11i", "111i").replace("1i", "i"))
+r = genRender(equation + "=" + str(answer).replace("-", "~").replace("(", "").replace(")", "").replace("11j", "111j").replace("1j", "j").replace("+0j", "").replace("j", r"\im"))
 if not logging: print2dArray(r)
 
 
