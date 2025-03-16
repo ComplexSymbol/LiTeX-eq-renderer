@@ -11,14 +11,23 @@ trigs = {'sin': lambda x: math.sin(x),
 def Evaluate(eq):
   global trigs
   
+  if isFloat(eq):
+    return float(eq)
+  
   print(f"Standardizing eq : '{eq}'")
+  
+  #replace - with +- because 3-2^{4} evaluates as 316
+  eq = eq.replace("-", "+-")
+  eq = eq.replace("_", "-")
+  eq = eq.replace("log-", "log_")
+  
   # Add implicit multiplication
   for i in range(len(eq) - 1):
     # 3 main causes: num*func, paren*func, paren*paren
     if ((eq[i].isdigit() and eq[i + 1] == "\\") or # 5\pi
         (eq[i].isdigit() and eq[i + 1] == "(") or # 2(3 ...
         (eq[i].isdigit() and eq[i + 1].isalpha()) or # 9sin(...
-        (eq[i] not in ['+', '-', '*', '/', '('] and eq[i + 1] == "\\") or # \pi\e, X: (\pi
+        (eq[i].isalpha() and eq[i + 1] == "\\") or # \pi\e, X: (\pi
         (eq[i] == ")" and eq[i + 1] == "\\") or # ...4)\pi
         (eq[i] == ")" and eq[i + 1] == "(") or # ...3)(6...
         (eq[i] == "}" and eq[i + 1].isdigit())): # ...2}7
@@ -36,7 +45,7 @@ def Evaluate(eq):
     eq = eq.replace("\\" + specials[tries.index(True)], 
                     str(values[specials[tries.index(True)]]))
     tries[tries.index(True)] = False
-  
+  print(f"   Eq is {eq} after replacing constants")
   
   # P - Parenthetical function (trig)
   while any(trigs in eq for trigs in ["sin", "cos", "tan", "sec", "csc", "cot"]):
@@ -53,6 +62,7 @@ def Evaluate(eq):
     print(f"  Found trig function {func} with contents {contents}")
     eq = eq.replace(f"{func}({contents})", 
                     str(SpecialTrig(func, Evaluate(contents), False)))
+  print(f"   Eq is {eq} after evaluating trig functions")
   
   # P - Parenthetical function (log)  
   while "log" in eq: 
@@ -63,13 +73,16 @@ def Evaluate(eq):
     
     eq = eq.replace("log_{"+base+"}" + f"({contents})", 
                     str(math.log(Evaluate(contents), Evaluate(base))))
-
+  
+  print(f"   Eq is {eq} after evaluating logarithms")
+  
   # P - Parenthesis
   while "(" in eq:
     contents = Between(eq, "(", ")")
     
     eq = eq.replace(f"({contents})", 
                     str(Evaluate(contents)))
+  print(f"   Eq is {eq} after evaluating parentheticals")
 
   # E - Exponents
   while "^" in eq:
@@ -82,17 +95,21 @@ def Evaluate(eq):
     
     print(f"  Found exponent with base {base} and exponent {exp}")
     eq = eq.replace(base + "^{"+exp+"}",
-                    str(float(base) ** float(exp)))
+                    str(math.pow(float(base), Evaluate(exp))))
+  print(f"   Eq is {eq} after evaluating exponents")
 
   # E - Exponents (square root)
   while r"\sqrt" in eq:
     start = eq.find(r"\sqrt") + 5
     nthroot = Between(eq[start:], "{", "}")
     contents = Between(eq[start + len(nthroot) + 2:], "{", "}")
-
+    
+    print(f"  Found an {nthroot} degree radical containing {contents}")
+    
     eq = eq.replace(r"\sqrt{"+nthroot+"}" + "{"+contents+"}", 
                     str(pow(Evaluate(contents), 1 / Evaluate(nthroot))))
-
+  print(f"   Eq is {eq} after evaluating radicals")
+  
   # D - Division (Fractions have priority)
   while r"\frac" in eq:
     start = eq.find(r"\frac") + 5
@@ -101,9 +118,10 @@ def Evaluate(eq):
     
     eq = eq.replace(r"\frac{"+numer+"}" + "{"+denom+"}", 
                     str(Evaluate(numer) / Evaluate(denom)))
+  print(f"   Eq is {eq} after evaluating fractions")
 
   # DMAS - In that order
-  while set(eq) & frozenset("/*+-"):
+  while set(eq) & frozenset("/*+-") and not isFloat(eq):
     curOp = "/" if "/" in eq else (
             "*" if "*" in eq else (
             "+" if "+" in eq else (
@@ -130,6 +148,7 @@ def Evaluate(eq):
     print(f"  Result: {operate[curOp](first, second)}")
     eq = eq.replace(f"{first}{curOp}{second}", 
                     str(operate[curOp](first, second)))
+  print(f"   Eq is {eq} after evaluating operations")
   
   sign = 1
   if eq[0] == "-":
@@ -137,7 +156,7 @@ def Evaluate(eq):
     eq = eq[1:]
   
   ans = float(eq)
-  print(f"{sign}, {ans}; {sign * ans}")
+  print(f"Finished evaluating; result: sign {sign}, ans {ans}, multans {sign * ans}")
   return sign * ans;
 
 def primeFactors(n):

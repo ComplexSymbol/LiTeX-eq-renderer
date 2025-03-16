@@ -286,13 +286,12 @@ def print2dArray(arr, bh = None):
   print("--PRERENDER--")
   
   
-equation = r"1+e^{2\pi}-(3x\sqrt{\frac{sin(4)}{5}log_{6}(7)*8}/9)^{10}"
-equation = r"1 + e^{2} - (3 * \sqrt{ \frac{sin(4)}{5^{ 2 }} + 8 * log_{6}(7)} / 9)^{ 2 }"
-equation = r"\frac{1}{2^{3}}log_{4}(5)"
-equation = r"\frac{1}{2}log_{4}(5)"
-equation = r"log_{4}(5)"
-
-equation = r"log_{2}(3)"
+equation = r"1+\e^{2\pi}-(3\sqrt{2}{\frac{sin(1)}{5}log_{6}(7)*8}/9)^{10}"
+#equation = r"1 + e^{2} - (3 * \sqrt{ \frac{sin(4)}{5^{ 2 }} + 8 * log_{6}(7)} / 9)^{ 2 }"
+#equation = r"\frac{1}{2^{3}}log_{4}(5)"
+#equation = r"\frac{1}{2}log_{4}(5)"
+#equation = r"log_{4}(5)"
+#equation = r"3(4)"
 
 answer = Evaluator.Evaluate(equation)
 print(answer)
