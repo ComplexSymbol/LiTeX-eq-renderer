@@ -14,6 +14,7 @@ There is also a customizable, in-place equation evaluator that evaluates any LiT
 - Trigonometric functions: sin cos tan + hyperbolic variants
 - Algebreic constants: e, pi, i, theta, x
 - Expression Evaluator with implicit multiplication support
+- Complex number support
 
 ### Example render:
 r"1 + e^{2\pi} - (3x \sqrt{ \frac{ sin(4) }{ 5 } log_{6}(7) * 8} / 9)^{ 10 }"
