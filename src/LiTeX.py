@@ -28,7 +28,7 @@ def genRender(eq, exp=False):
   
     elif eq[i] == "(":
       print(f" Found parenthesis")
-      contents = Evaluator.Between(eq, "(", ")")
+      contents = Evaluator.Between(eq[i:], "(", ")")
       parenHeight = max(0, len(genRender(contents, exp)) - (7 if exp else 10))
       rightParen = readGlyph(begWth + ")", parenHeight)
   
@@ -286,17 +286,13 @@ def print2dArray(arr, bh = None):
   print("--PRERENDER--")
   
   
-equation = r"1+\e^{2\pi}-(3\sqrt{2}{\frac{sin(1)}{5}log_{6}(7)*8}/9)^{10}"
-#equation = r"1 + e^{2} - (3 * \sqrt{ \frac{sin(4)}{5^{ 2 }} + 8 * log_{6}(7)} / 9)^{ 2 }"
-#equation = r"\frac{1}{2^{3}}log_{4}(5)"
-#equation = r"\frac{1}{2}log_{4}(5)"
-#equation = r"log_{4}(5)"
-#equation = r"3(4)"
+equation = r"1+\e^{2\pi}-(3\sqrt{2}{\frac{sin(1)}{5}log_{2}(13)*8}/9)"
+equation = r"\sqrt{2}{~4}"
 
 answer = Evaluator.Evaluate(equation)
 print(answer)
 
-r = genRender(equation + "=" + str(answer).replace("-", "~"))
+r = genRender(equation + "=" + str(answer).replace("-", "~").replace("j", "i").replace("11i", "111i").replace("1i", "i"))
 if not logging: print2dArray(r)
 
 

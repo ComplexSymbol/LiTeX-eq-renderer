@@ -12,13 +12,13 @@ def Evaluate(eq):
   global trigs
   
   if isFloat(eq):
-    return float(eq)
+    return toFloat(eq)
   
   print(f"Standardizing eq : '{eq}'")
   
   #replace - with +- because 3-2^{4} evaluates as 316
   eq = eq.replace("-", "+-")
-  eq = eq.replace("_", "-")
+  eq = eq.replace("~", "-")
   eq = eq.replace("log-", "log_")
   
   # Add implicit multiplication
@@ -95,7 +95,7 @@ def Evaluate(eq):
     
     print(f"  Found exponent with base {base} and exponent {exp}")
     eq = eq.replace(base + "^{"+exp+"}",
-                    str(math.pow(float(base), Evaluate(exp))))
+                    str(toFloat(pow(toFloat(base), Evaluate(exp)))))
   print(f"   Eq is {eq} after evaluating exponents")
 
   # E - Exponents (square root)
@@ -107,7 +107,7 @@ def Evaluate(eq):
     print(f"  Found an {nthroot} degree radical containing {contents}")
     
     eq = eq.replace(r"\sqrt{"+nthroot+"}" + "{"+contents+"}", 
-                    str(pow(Evaluate(contents), 1 / Evaluate(nthroot))))
+                    str(toFloat(pow(Evaluate(contents), 1 / Evaluate(nthroot)))))
   print(f"   Eq is {eq} after evaluating radicals")
   
   # D - Division (Fractions have priority)
@@ -117,7 +117,7 @@ def Evaluate(eq):
     denom = Between(eq[start + len(numer) + 2:], "{", "}")
     
     eq = eq.replace(r"\frac{"+numer+"}" + "{"+denom+"}", 
-                    str(Evaluate(numer) / Evaluate(denom)))
+                    str(toFloat(Evaluate(numer) / Evaluate(denom))))
   print(f"   Eq is {eq} after evaluating fractions")
 
   # DMAS - In that order
@@ -128,10 +128,10 @@ def Evaluate(eq):
             "-" if "-" in eq else (
             None))))
 
-    operate = {'+': lambda x, y: float(x) + float(y),
-               '-': lambda x, y: float(x) - float(y),
-               '*': lambda x, y: float(x) * float(y),
-               '/': lambda x, y: float(x) / float(y)}
+    operate = {'+': lambda x, y: toFloat(x) + toFloat(y),
+               '-': lambda x, y: toFloat(x) - toFloat(y),
+               '*': lambda x, y: toFloat(x) * toFloat(y),
+               '/': lambda x, y: toFloat(x) / toFloat(y)}
     
     i = 0
     before = eq[:eq.index(curOp)]
@@ -147,7 +147,7 @@ def Evaluate(eq):
     print(f"  Found operator \'{curOp}\' with first \'{first}\' and second \'{second}\'")
     print(f"  Result: {operate[curOp](first, second)}")
     eq = eq.replace(f"{first}{curOp}{second}", 
-                    str(operate[curOp](first, second)))
+                    str(toFloat(operate[curOp](first, second))))
   print(f"   Eq is {eq} after evaluating operations")
   
   sign = 1
@@ -155,7 +155,7 @@ def Evaluate(eq):
     sign = -1
     eq = eq[1:]
   
-  ans = float(eq)
+  ans = toFloat(eq)
   print(f"Finished evaluating; result: sign {sign}, ans {ans}, multans {sign * ans}")
   return sign * ans;
 
@@ -238,9 +238,32 @@ def isFloat(string):
   if string[0] == "+": return False
   
   try:
-    if string[0] == "-": string = string[1:]
-    float(string)
+    toFloat(string)
     return True
 
   except ValueError:
     return False
+  
+def toFloat(string):
+  print(f"Converting {string} to float")
+  
+  string = str(string)
+  
+  # Complex or imaginary
+  if "j" in string:
+    # Imaginary
+    if string[-1] == "j":
+      return float(string[:-1]) * 1j
+    
+    # Complex
+    else:
+      # (a +/- bj) -> a +/- b
+      string = string.replace("(", "").replace(")", "").replace("j", "")
+      print(string)
+      string, sign = (string.rsplit("+"), 1) if "+" in string else (string.rsplit("-"), -1)
+      print(string)
+      return round(float(string[0]), 14) + (sign * 1j * round(float(string[1]), 14))
+  
+  else: return round(float(string), 14)
+  
+  
