@@ -67,7 +67,7 @@ def Evaluate(eq, replace = False):
 
     print(f"  Found trig function {func} with contents {contents}")
     eq = eq.replace(f"{func}({contents})", 
-                    str(SpecialTrig(func, Evaluate(contents), False)))
+                    str(SpecialTrig(func, Evaluate(contents), False)).replace("(", "").replace(")", ""))
   print(f"   Eq is {eq} after evaluating trig functions")
   
   # P - Parenthetical function (log)  
@@ -78,7 +78,7 @@ def Evaluate(eq, replace = False):
     contents = Between(eq[location + len(base) + 2:], "(", ")")
     
     eq = eq.replace("log_{"+base+"}" + f"({contents})", 
-                    str(math.log(Evaluate(contents), Evaluate(base))))
+                    str(math.log(Evaluate(contents), Evaluate(base))).replace("(", "").replace(")", ""))
   
   print(f"   Eq is {eq} after evaluating logarithms")
   
@@ -97,15 +97,13 @@ def Evaluate(eq, replace = False):
     exp = Between(eq[eq.index("^"):], "{", "}")
     base = None
     
-    print(f"  HERE!!")
-    
     i = 0
     while not isFloat(eq[:eq.index("^")][i:]): i += 1
     base = eq[:eq.index("^")][i:]
     
     print(f"  Found exponent with base {base} and exponent {exp}")
     eq = eq.replace(base + "^{"+exp+"}",
-                    str(toFloat(pow(toFloat(base), Evaluate(exp)))))
+                    str(toFloat(pow(toFloat(base), Evaluate(exp)))).replace("(", "").replace(")", ""))
   print(f"   Eq is {eq} after evaluating exponents")
 
   # E - Exponents (square root)
@@ -117,7 +115,7 @@ def Evaluate(eq, replace = False):
     print(f"  Found an {nthroot} degree radical containing {contents}")
     
     eq = eq.replace(r"\sqrt{"+nthroot+"}" + "{"+contents+"}", 
-                    str(toFloat(pow(Evaluate(contents), 1 / Evaluate(nthroot)))))
+                    str(toFloat(pow(Evaluate(contents), 1 / Evaluate(nthroot)))).replace("(", "").replace(")", ""))
   print(f"   Eq is {eq} after evaluating radicals")
   
   # D - Division (Fractions have priority)
@@ -131,29 +129,38 @@ def Evaluate(eq, replace = False):
   print(f"   Eq is {eq} after evaluating fractions")
 
   # DMAS - In that order
-  while set(eq) & frozenset("/*+-") and not isFloat(eq):
-    curOp = "/" if "/" in eq else (
-            "*" if "*" in eq else (
-            "+" if "+" in eq else (
-            "-" if "-" in eq else (
+  skip = 0
+  while set(eq[skip:]) & frozenset("/*+-") and not isFloat(eq[skip:]):
+    curOp = "/" if "/" in eq[skip:] else (
+            "*" if "*" in eq[skip:] else (
+            "+" if "+" in eq[skip:] else (
+            "-" if "-" in eq[skip:] else (
             None))))
     
+    before = eq[skip:][:eq[skip:].index(curOp)]
     i = 0
-    before = eq[:eq.index(curOp)]
     while not isFloat(before[i:]): i += 1
     first = before[i:]
     
-    after = eq[eq.index(curOp) + 1:]
+    after = eq[skip:][eq[skip:].index(curOp) + 1:]
     i = len(after)
     while not isFloat(after[:i]):
       i -= 1
     second = after[:i]
     
+    if isFloat(f"{first}{curOp}{second}"):
+      skip = eq[skip:].index(curOp) + 1
+      print(f"setting skip to {skip}")
+      continue
+    
     print(f"  Found operator \'{curOp}\' with first \'{first}\' and second \'{second}\'")
     print(f"  Result: {operate[curOp](first, second)}")
     eq = eq.replace(f"{first}{curOp}{second}", 
                     str(toFloat(operate[curOp](first, second))))
+    skip = 0
+    
   print(f"   Eq is {eq} after evaluating operations")
+  
   
   sign = 1
   if eq[0] == "-":
@@ -179,6 +186,11 @@ def primeFactors(n):
 
 def SpecialTrig(func, x, simplify):
   global trigs
+  
+  x = toFloat(x)
+  if isinstance(x, complex):
+    print("JOE " + '('+str(math.e) + "^{j*"+ str(x) +"}+-" + str(math.e) + "^{-j*"+ str(x) +"})/(2j)")
+    return Evaluate('('+str(math.e) + "^{j*"+ str(x) +"}+-" + str(math.e) + "^{-j*"+ str(x) +"})/(2j)")
   
   if not simplify:
     return trigs[func](x)
@@ -250,8 +262,6 @@ def isFloat(string):
     return False
   
 def toFloat(string):
-  print(f"Converting {string} to float")
-  
   string = str(string)
   
   # Complex or imaginary

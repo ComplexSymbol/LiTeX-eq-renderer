@@ -69,6 +69,7 @@ glyphDict = {
   '^h': 588,
   '^pi': 596,
   '^e': 604,
+  '^~': 612
 }
 
 def genRender(eq, exp=False):
@@ -357,9 +358,12 @@ def print2dArray(arr, bh = None):
 
 equation = r"1+\e^{2\pi}-(3\sqrt{2}{\frac{sin(1)}{5}log_{2}(13)*8}/9)"
 equation = r"(4\sqrt{2}{~4}+3)^{2}"
+equation = r"(4\sqrt{2}{~4})^{2}"
+equation = r"sin(~j+4j)"
 
-renderEQ = genRender(equation)
-renderANS = genRender("=" + str(Evaluator.Evaluate(equation, True)).replace("-", "~").replace("(", "").replace(")", "").replace("11j", "111j").replace("1j", "j").replace("+0j", "").replace("j", r"\im"))
+ans = str(Evaluator.Evaluate(equation, True)).replace("-", "~").replace("(", "").replace(")", "").replace("11j", "111j").replace("1j", "j").replace("+0j", "").replace("j", r"\im")
+renderANS = genRender("=" + ("0" if ans == "0\im" else ans))
+renderEQ = genRender(equation.replace("j", "i"))
 
 print2dArray(renderEQ)
 print2dArray(renderANS)
