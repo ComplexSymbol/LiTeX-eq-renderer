@@ -5,7 +5,11 @@ trigs = {'sin': lambda x: math.sin(x),
          'tan': lambda x: math.tan(x),
          'csc': lambda x: 1 / math.sin(x),
          'sec': lambda x: 1 / math.sec(x),
-         'cot': lambda x: 1 / math.cot(x)}
+         'cot': lambda x: 1 / math.cot(x),
+         'asin': lambda x: math.asin(x),
+         'acos': lambda x: math.acos(x),
+         'atan': lambda x: math.atan(x)
+}
 
 operate = {'+': lambda x, y: toFloat(x) + toFloat(y),
            '-': lambda x, y: toFloat(x) - toFloat(y),
@@ -26,7 +30,7 @@ def Evaluate(eq, replace = False):
     eq = eq.replace("-", "+-")
     eq = eq.replace("~", "-")
     eq = eq.replace("log-", "log_")
-    eq = eq.replace("\im", "j")
+    eq = eq.replace(r"\im", "j")
   
   # Add implicit multiplication
   for i in range(len(eq) - 1):
@@ -63,11 +67,14 @@ def Evaluate(eq, replace = False):
            "sec" if "sec" in eq else (
            "cot" if "cot" in eq else (
            None))))))
+   
+    if eq.index(func + "^{-1}") == eq.index(func):
+      func = "a" + func
 
-    contents = Between(eq[eq.index(func) + 3:], "(", ")")
+    contents = Between(eq[eq.index(func[1:] if func[0] == "a" else func) + (8 if func[0] == "a" else 3):], "(", ")")
 
     print(f"  Found trig function {func} with contents {contents}")
-    eq = eq.replace(f"{func}({contents})", 
+    eq = eq.replace(f"{func[1:] + "^{-1}" if func[0] == "a" else func}({contents})", 
                     str(SpecialTrig(func, Evaluate(contents), False)).replace("(", "").replace(")", ""))
   print(f"   Eq is {eq} after evaluating trig functions")
   
