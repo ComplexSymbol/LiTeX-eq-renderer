@@ -4,6 +4,73 @@ import math
 lastFinishedBarHt = None
 logging = False
 
+glyphDict = {
+  '(': 0,
+  ')': 11,
+  '0': 22,
+  '1': 33,
+  '2': 44,
+  '3': 55,
+  '4': 66,
+  '5': 77,
+  '6': 88,
+  '7': 99,
+  '8': 110,
+  '9': 121,
+  '+': 132,
+  '*': 143,
+  '-': 154,
+  '~': 165,
+  '/': 176,
+  '.': 187,
+  '': 198,
+  's': 209,
+  'i': 220,
+  'im': 231,
+  'n': 242,
+  'c': 253,
+  'o': 264,
+  't': 275,
+  'a': 286,
+  'l': 297,
+  'g': 308,
+  'h': 319,
+  'pi': 330,
+  'e': 341,
+  '=': 352,
+  'f': 363,
+  'rad': 374,
+  '^(': 380,
+  '^)': 388,
+  '^+': 396,
+  '^-': 404,
+  '^*': 412,
+  '^/': 420,
+  '^0': 428,
+  '^1': 436,
+  '^2': 444,
+  '^3': 452,
+  '^4': 460,
+  '^5': 468,
+  '^6': 476,
+  '^7': 484,
+  '^8': 492,
+  '^9': 500,
+  '^x': 508,
+  '^s': 516,
+  '^i': 524,
+  '^n': 532,
+  '^c': 540,
+  '^o': 548,
+  '^t': 556,
+  '^a': 564,
+  '^l': 572,
+  '^g': 580,
+  '^h': 588,
+  '^pi': 596,
+  '^e': 604,
+}
+
 def genRender(eq, exp=False):
   global lastFinishedBarHt
   i = 0
@@ -25,13 +92,15 @@ def genRender(eq, exp=False):
       char = readGlyph(begWth + eq[i])
       render = add2dArrays(render, char, AbarHt=barHt)
       lastHeight = len(char)
+      
+      del char
   
     elif eq[i] == "(":
       print(f" Found parenthesis")
       contents = Evaluator.Between(eq[i:], "(", ")")
-      parenHeight = max(0, len(genRender(contents, exp)) - (7 if exp else 10))
-      rightParen = readGlyph(begWth + ")", parenHeight)
-  
+      renderedConts = genRender(contents, exp)
+      parenHeight = max(0, len(renderedConts) - (7 if exp else 10))
+
       render = add2dArrays(
         render,
         readGlyph(begWth + "(", -parenHeight),
@@ -41,13 +110,13 @@ def genRender(eq, exp=False):
       barHt = max(barHt, lastFinishedBarHt)
       render = add2dArrays(
         render,
-        genRender(contents, exp),
+        renderedConts,
         AbarHt=barHt,
         BbarHt=lastFinishedBarHt,
       )
       render = add2dArrays(
         render,
-        rightParen,
+        readGlyph(begWth + ")", parenHeight),
         AbarHt=barHt,
         BbarHt=lastFinishedBarHt,
       )
@@ -55,6 +124,8 @@ def genRender(eq, exp=False):
       
       print(f"  setting i to {len(contents) + 1}")
       i += len(contents) + 1
+      
+      del contents, renderedConts, parenHeight
     
     elif eq[i] == "^" or eq[i] == "_":
       isPwr = eq[i] == "^"
@@ -73,6 +144,8 @@ def genRender(eq, exp=False):
         barHt += abs(min(barHt - len(contents), 0))
       
       i += ln + 2
+      
+      del isPwr, contents, ln
     
     elif eq[i] == "\\":
       print("Found escape sequence")
@@ -98,6 +171,8 @@ def genRender(eq, exp=False):
         render = add2dArrays(render, char, AbarHt = barHt)
         lastHeight = len(char)
         i += len(specials[tries.index(True)])
+        
+        del specials, tries, char
       
       # Since it's not an escape character, it must be a function
       elif esc == "frac":
@@ -138,6 +213,8 @@ def genRender(eq, exp=False):
         barHt = max(barHt, len(den)) + hang
         lastHeight = len(fraction) + hang
         
+        del num, den, fraction
+        
       elif esc == "sqrt":
         # Nth root
         n = Evaluator.Between(eq[i:], "{", "}")
@@ -160,12 +237,14 @@ def genRender(eq, exp=False):
         render = add2dArrays(render, radical, AbarHt = barHt, BbarHt = lastFinishedBarHt)
         barHt = max(barHt, lastFinishedBarHt) + hang
         lastHeight = len(radical) + hang
+        
+        del n, radicand, stem, radical
+      
+      del esc
 
     else:
       raise Exception(f" Unidentified character: {eq[i]}")
     
-    if logging: print2dArray(render, barHt)
-      
     i += 1
 
   print("Removing overhead...")
@@ -187,37 +266,30 @@ def genRender(eq, exp=False):
 def readGlyph(g, resParen=0):
   with open("glyphs.txt", "r") as glyphs:
     glyphs = glyphs.readlines()
+    line = glyphs[glyphDict[g]].replace("\n", "").replace(g, "", 1).replace(":", "")
 
-    for i in range(len(glyphs)):
-      line = glyphs[i].replace("\n", "")
+    width = 6 if len(line) == 0 else int(line.rpartition("x")[0])
+    height = 10 if len(line) == 0 else int(line.rpartition("x")[2])
 
-      if line.endswith(":") and line.startswith(g):
-        line = line.replace(g, "", 1).replace(":", "")
+    glyph = [[False] * width] * height
 
-        width = 6 if len(line) == 0 else int(line.rpartition("x")[0])
-        height = 10 if len(line) == 0 else int(line.rpartition("x")[2])
+    for y in range(height):
+      line = [
+        True if digit == "1" else False
+        for digit in bin(int(glyphs[glyphDict[g] + y + 1]))[2:]
+      ]
+      line = [False] * (width - len(line)) + line
+      glyph[y] = line
 
-        glyph = [[False] * width for _ in range(height)]
+    for p in range(abs(resParen)):
+      glyph.insert(
+        4,
+        [False, True, False, False]
+        if resParen < 0
+        else [False, False, False, True],
+      )
 
-        for y in range(height):
-          i += 1
-
-          line = [
-            True if digit == "1" else False
-            for digit in bin(int(glyphs[i]))[2:]
-          ]
-          line = [False] * (width - len(line)) + line
-          glyph[y] = line
-
-        for p in range(abs(resParen)):
-          glyph.insert(
-            4,
-            [False, True, False, False]
-            if resParen < 0
-            else [False, False, False, True],
-          )
-
-        return glyph
+    return glyph
 
   raise Exception(f"Glyph not found '{g}'")
 
@@ -235,18 +307,15 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
     f"Add2dArrays ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}"
   )
 
-  newArray = [
-    [False] * (len(a[0]) + len(b[0]))
-    for _ in range(
-      max(
-        max(len(a), len(b)) + ((len(b) - BbarHt - 1) - (len(a) - AbarHt - 1)),
-        len(a),
-        len(b),
-      ) + add
-      if overlap == -1
-      else max(len(a), relHt + len(b) - overlap)
-    )
-  ]
+  newArray = [[False] * (len(a[0]) + len(b[0]))] * (
+    max(
+      max(len(a), len(b)) + ((len(b) - BbarHt - 1) - (len(a) - AbarHt - 1)),
+      len(a),
+      len(b),
+    ) + add
+    if overlap == -1
+    else max(len(a), relHt + len(b) - overlap)
+  )
   newArray = merge2dArrays(newArray, a, 0, abs(diff) if diff < 0 else 0)
   newArray = merge2dArrays(
     newArray,
@@ -287,13 +356,12 @@ def print2dArray(arr, bh = None):
   
 
 equation = r"1+\e^{2\pi}-(3\sqrt{2}{\frac{sin(1)}{5}log_{2}(13)*8}/9)"
-equation = r"4\sqrt{2}{~4}+3"
+equation = r"(4\sqrt{2}{~4}+3)^{2}"
 
-answer = Evaluator.Evaluate(equation)
-print(answer)
+renderEQ = genRender(equation)
+renderANS = genRender("=" + str(Evaluator.Evaluate(equation, True)).replace("-", "~").replace("(", "").replace(")", "").replace("11j", "111j").replace("1j", "j").replace("+0j", "").replace("j", r"\im"))
 
-r = genRender(equation + "=" + str(answer).replace("-", "~").replace("(", "").replace(")", "").replace("11j", "111j").replace("1j", "j").replace("+0j", "").replace("j", r"\im"))
-if not logging: print2dArray(r)
-
+print2dArray(renderEQ)
+print2dArray(renderANS)
 
 

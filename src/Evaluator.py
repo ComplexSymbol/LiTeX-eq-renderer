@@ -13,25 +13,26 @@ operate = {'+': lambda x, y: toFloat(x) + toFloat(y),
            '/': lambda x, y: toFloat(x) / toFloat(y)}
 
 # Follows strict PEDMAS
-def Evaluate(eq):
+def Evaluate(eq, replace = False):
   global trigs, operate
   
-  if not 'j' in eq and isFloat(eq):
+  if isFloat(eq):
     return toFloat(eq)
   
   print(f"Standardizing eq : '{eq}'")
   
-  #replace - with +- because 3-2^{4} evaluates as 316
-  eq = eq.replace("-", "+-")
-  eq = eq.replace("~", "-")
-  eq = eq.replace("log-", "log_")
+  if replace:
+    #replace - with +- because 3-2^{4} evaluates as 316
+    eq = eq.replace("-", "+-")
+    eq = eq.replace("~", "-")
+    eq = eq.replace("log-", "log_")
   
   # Add implicit multiplication
   for i in range(len(eq) - 1):
     # 3 main causes: num*func, paren*func, paren*paren
     if ((eq[i].isdigit() and eq[i + 1] == "\\") or # 5\pi
         (eq[i].isdigit() and eq[i + 1] == "(") or # 2(3 ...
-        (eq[i].isdigit() and eq[i + 1].isalpha()) or # 9sin(...
+        (eq[i].isdigit() and eq[i + 1].isalpha() and eq[i + 1] != "j") or # 9sin(...
         (eq[i].isalpha() and eq[i + 1] == "\\") or # \pi\e, X: (\pi
         (eq[i] == ")" and eq[i + 1] == "\\") or # ...4)\pi
         (eq[i] == ")" and eq[i + 1] == "(") or # ...3)(6...
@@ -84,6 +85,8 @@ def Evaluate(eq):
   # P - Parenthesis
   while "(" in eq:
     contents = Between(eq, "(", ")")
+    if isFloat(contents):
+      break
     
     eq = eq.replace(f"({contents})", 
                     str(Evaluate(contents)))
@@ -93,6 +96,8 @@ def Evaluate(eq):
   while "^" in eq:
     exp = Between(eq[eq.index("^"):], "{", "}")
     base = None
+    
+    print(f"  HERE!!")
     
     i = 0
     while not isFloat(eq[:eq.index("^")][i:]): i += 1
@@ -251,8 +256,8 @@ def toFloat(string):
   
   # Complex or imaginary
   if "j" in string:
-    return complex(round(complex(string).real, 14), round(complex(string).imag, 14))
+    return complex(round(complex(string).real, 6), round(complex(string).imag, 6))
   
-  else: return round(float(string), 14)
+  else: return round(float(string), 6)
   
   
