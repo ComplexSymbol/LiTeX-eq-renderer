@@ -26,6 +26,7 @@ def Evaluate(eq, replace = False):
     eq = eq.replace("-", "+-")
     eq = eq.replace("~", "-")
     eq = eq.replace("log-", "log_")
+    eq = eq.replace("\im", "j")
   
   # Add implicit multiplication
   for i in range(len(eq) - 1):
@@ -169,7 +170,7 @@ def Evaluate(eq, replace = False):
   
   ans = toFloat(eq)
   print(f"Finished evaluating; result: sign {sign}, ans {ans}, multans {sign * ans}")
-  return sign * ans;
+  return complex(round(complex(sign * ans).real, 6), round(complex(sign * ans).imag)) if replace else sign * ans;
 
 def primeFactors(n):
   i = 2
@@ -266,7 +267,7 @@ def toFloat(string):
   
   # Complex or imaginary
   if "j" in string:
-    return complex(round(complex(string).real, 6), round(complex(string).imag, 6))
+    return complex(string)
   
   else: return round(float(string), 6)
   
