@@ -34,16 +34,19 @@ def Evaluate(eq, replace = False):
     eq = eq.replace(r"\im", "j")
   
   # Add implicit multiplication
-  for i in range(len(eq) - 1):
+  i = 0
+  while i < len(eq) - 1:
     # 3 main causes: num*func, paren*func, paren*paren
     if ((eq[i].isdigit() and eq[i + 1] == "\\") or # 5\pi
         (eq[i].isdigit() and eq[i + 1] == "(") or # 2(3 ...
         (eq[i].isdigit() and eq[i + 1].isalpha() and eq[i + 1] != "j") or # 9sin(...
+        (eq[i] == "j" and eq[i + 1] == "j") or
         (eq[i].isalpha() and eq[i + 1] == "\\") or # \pi\e, X: (\pi
         (eq[i] == ")" and eq[i + 1] == "\\") or # ...4)\pi
         (eq[i] == ")" and eq[i + 1] == "(") or # ...3)(6...
         (eq[i] == "}" and eq[i + 1].isdigit())): # ...2}7
       eq = eq[:i + 1] + "*" + eq[i + 1:] # Insert multiplication
+    i += 1
   
   print(f"Evaluating \'{eq}\'")
   
@@ -172,15 +175,9 @@ def Evaluate(eq, replace = False):
     
   print(f"   Eq is {eq} after evaluating operations")
   
-  
-  sign = 1
-  if eq[0] == "-":
-    sign = -1
-    eq = eq[1:]
-  
   ans = toFloat(eq)
-  print(f"Finished evaluating; result: sign {sign}, ans {ans}, multans {sign * ans}")
-  return complex(round(complex(sign * ans).real, 6), round(complex(sign * ans).imag, 6))
+  print(f"Finished evaluating; result: {ans}")
+  return complex(round(complex(ans).real, 6), round(complex(ans).imag, 6))
 
 def primeFactors(n):
   i = 2
@@ -201,7 +198,7 @@ def SpecialTrig(func, x, simplify):
   x = toFloat(x)
   print(f"{func}: {x}")
   if isinstance(x, complex) and x.imag != 0j:
-    return Evaluate('('+str(math.e) + "^{j*"+ str(x) +"}+-" + str(math.e) + "^{-j*"+ str(x) +"})/(2j)")
+    raise ValueError("Math domain error: no complex trig support.")
   x = x.real
   
   if not simplify:
