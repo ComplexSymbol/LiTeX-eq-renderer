@@ -356,10 +356,10 @@ def print2dArray(arr, bh = None):
   print("--PRERENDER--")
   
 
-equation = r"\e^{2\im}"
+equation = r"log_{3}(sin(\pi/4)+\e^{\pi\im}+\frac{5}{2})+tan^{~1}(1)*(2\im+\pi)"
 
 ans = str(Evaluator.Evaluate(equation, True)).replace("-", "~", 1).replace("(", "").replace(")", "").replace("11j", "111j").replace("1j", "j").replace("+0j", "").replace("j", r"\im")
-renderANS = genRender("=" + ("0" if ans == "0\im" else ans))
+renderANS = genRender("=" + ("0" if ans == r"0\im" else ans))
 renderEQ = genRender(equation)
 
 print2dArray(renderEQ)

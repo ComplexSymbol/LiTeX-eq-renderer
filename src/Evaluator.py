@@ -1,4 +1,5 @@
 import math
+import cmath
 
 trigs = {'sin': lambda x: math.sin(x),
          'cos': lambda x: math.cos(x),
@@ -68,11 +69,11 @@ def Evaluate(eq, replace = False):
            "cot" if "cot" in eq else (
            None))))))
    
-    if eq.index(func + "^{-1}") == eq.index(func):
+    if (eq.index(func + "^{-1}") if func + "^{-1}" in eq else None) == eq.index(func):
       func = "a" + func
-
+    
     contents = Between(eq[eq.index(func[1:] if func[0] == "a" else func) + (8 if func[0] == "a" else 3):], "(", ")")
-
+    
     print(f"  Found trig function {func} with contents {contents}")
     eq = eq.replace(f"{func[1:] + "^{-1}" if func[0] == "a" else func}({contents})", 
                     str(SpecialTrig(func, Evaluate(contents), False)).replace("(", "").replace(")", ""))
@@ -86,7 +87,7 @@ def Evaluate(eq, replace = False):
     contents = Between(eq[location + len(base) + 2:], "(", ")")
     
     eq = eq.replace("log_{"+base+"}" + f"({contents})", 
-                    str(math.log(Evaluate(contents), Evaluate(base))).replace("(", "").replace(")", ""))
+                    str(cmath.log(Evaluate(contents), Evaluate(base))).replace("(", "").replace(")", ""))
   
   print(f"   Eq is {eq} after evaluating logarithms")
   
@@ -133,12 +134,14 @@ def Evaluate(eq, replace = False):
     denom = Between(eq[start + len(numer) + 2:], "{", "}")
     
     eq = eq.replace(r"\frac{"+numer+"}" + "{"+denom+"}", 
-                    str(toFloat(Evaluate(numer) / Evaluate(denom))))
+                    str(toFloat(Evaluate(numer) / Evaluate(denom))).replace("(", "").replace(")", ""))
   print(f"   Eq is {eq} after evaluating fractions")
 
   # DMAS - In that order
   skip = 0
   while set(eq[skip:]) & frozenset("/*+-") and not isFloat(eq[skip:]):
+    print(f"Finding operations in {eq[skip:]}")
+    
     curOp = "/" if "/" in eq[skip:] else (
             "*" if "*" in eq[skip:] else (
             "+" if "+" in eq[skip:] else (
@@ -164,7 +167,7 @@ def Evaluate(eq, replace = False):
     print(f"  Found operator \'{curOp}\' with first \'{first}\' and second \'{second}\'")
     print(f"  Result: {operate[curOp](first, second)}")
     eq = eq.replace(f"{first}{curOp}{second}", 
-                    str(toFloat(operate[curOp](first, second))))
+                    str(toFloat(operate[curOp](first, second))).replace("(", "").replace(")", ""))
     skip = 0
     
   print(f"   Eq is {eq} after evaluating operations")
@@ -177,7 +180,7 @@ def Evaluate(eq, replace = False):
   
   ans = toFloat(eq)
   print(f"Finished evaluating; result: sign {sign}, ans {ans}, multans {sign * ans}")
-  return complex(round(complex(sign * ans).real, 6), round(complex(sign * ans).imag)) if replace else sign * ans;
+  return complex(round(complex(sign * ans).real, 6), round(complex(sign * ans).imag, 6))
 
 def primeFactors(n):
   i = 2
@@ -196,9 +199,10 @@ def SpecialTrig(func, x, simplify):
   global trigs
   
   x = toFloat(x)
-  if isinstance(x, complex):
-    print("JOE " + '('+str(math.e) + "^{j*"+ str(x) +"}+-" + str(math.e) + "^{-j*"+ str(x) +"})/(2j)")
+  print(f"{func}: {x}")
+  if isinstance(x, complex) and x.imag != 0j:
     return Evaluate('('+str(math.e) + "^{j*"+ str(x) +"}+-" + str(math.e) + "^{-j*"+ str(x) +"})/(2j)")
+  x = x.real
   
   if not simplify:
     return trigs[func](x)
