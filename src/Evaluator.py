@@ -1,21 +1,25 @@
 import math
 import cmath
 
-trigs = {'sin': lambda x: math.sin(x),
-         'cos': lambda x: math.cos(x),
-         'tan': lambda x: math.tan(x),
-         'csc': lambda x: 1 / math.sin(x),
-         'sec': lambda x: 1 / math.sec(x),
-         'cot': lambda x: 1 / math.cot(x),
-         'asin': lambda x: math.asin(x),
-         'acos': lambda x: math.acos(x),
-         'atan': lambda x: math.atan(x)
+
+trigs = {
+  'sin': lambda x: cmath.sin(x) if isinstance(x, complex) else math.sin(x),
+  'cos': lambda x: cmath.cos(x) if isinstance(x, complex) else math.cos(x),
+  'tan': lambda x: cmath.tan(x) if isinstance(x, complex) else math.tan(x),
+  'csc': lambda x: 1 / (cmath.sin(x) if isinstance(x, complex) else math.sin(x)),
+  'sec': lambda x: 1 / (cmath.cos(x) if isinstance(x, complex) else math.cos(x)),
+  'cot': lambda x: 1 / (cmath.tan(x) if isinstance(x, complex) else math.tan(x)),
+  'asin': lambda x: cmath.asin(x) if isinstance(x, complex) else math.asin(x),
+  'acos': lambda x: cmath.acos(x) if isinstance(x, complex) else math.acos(x),
+  'atan': lambda x: cmath.atan(x) if isinstance(x, complex) else math.atan(x)
 }
 
-operate = {'+': lambda x, y: toFloat(x) + toFloat(y),
-           '-': lambda x, y: toFloat(x) - toFloat(y),
-           '*': lambda x, y: toFloat(x) * toFloat(y),
-           '/': lambda x, y: toFloat(x) / toFloat(y)}
+operate = {
+  '+': lambda x, y: toFloat(x) + toFloat(y),
+  '-': lambda x, y: toFloat(x) - toFloat(y),
+  '*': lambda x, y: toFloat(x) * toFloat(y),
+  '/': lambda x, y: toFloat(x) / toFloat(y)
+}
 
 # Follows strict PEDMAS
 def Evaluate(eq, replace = False):
@@ -27,8 +31,11 @@ def Evaluate(eq, replace = False):
   print(f"Standardizing eq : '{eq}'")
   
   if replace:
+    if '`' in eq:
+      raise ValueError("Incomplete expression")
+
     #replace - with +- because 3-2^{4} evaluates as 316
-    eq = eq.replace("-", "+-")
+    eq = eq[0] + eq[1:].replace("-", "+-")
     eq = eq.replace("~", "-")
     eq = eq.replace("log-", "log_")
     eq = eq.replace(r"\im", "j")
@@ -101,7 +108,7 @@ def Evaluate(eq, replace = False):
       break
     
     eq = eq.replace(f"({contents})", 
-                    str(Evaluate(contents)))
+                    str(Evaluate(contents)).replace("(", "").replace(")", ""))
   print(f"   Eq is {eq} after evaluating parentheticals")
 
   # E - Exponents
@@ -177,7 +184,7 @@ def Evaluate(eq, replace = False):
   
   ans = toFloat(eq)
   print(f"Finished evaluating; result: {ans}")
-  return complex(round(complex(ans).real, 6), round(complex(ans).imag, 6))
+  return complex(round(complex(ans).real, 6), round(complex(ans).imag, 6)) if replace else ans
 
 def primeFactors(n):
   i = 2
@@ -196,10 +203,6 @@ def SpecialTrig(func, x, simplify):
   global trigs
   
   x = toFloat(x)
-  print(f"{func}: {x}")
-  if isinstance(x, complex) and x.imag != 0j:
-    raise ValueError("Math domain error: no complex trig support.")
-  x = x.real
   
   if not simplify:
     return trigs[func](x)
@@ -277,6 +280,6 @@ def toFloat(string):
   if "j" in string:
     return complex(string)
   
-  else: return round(float(string), 6)
+  else: return float(string)
   
   

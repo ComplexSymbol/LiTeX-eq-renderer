@@ -39,37 +39,39 @@ glyphDict = {
   'e': 341,
   '=': 352,
   'f': 363,
-  'rad': 374,
-  '^(': 380,
-  '^)': 388,
-  '^+': 396,
-  '^-': 404,
-  '^*': 412,
-  '^/': 420,
-  '^0': 428,
-  '^1': 436,
-  '^2': 444,
-  '^3': 452,
-  '^4': 460,
-  '^5': 468,
-  '^6': 476,
-  '^7': 484,
-  '^8': 492,
-  '^9': 500,
-  '^x': 508,
-  '^s': 516,
-  '^im': 524,
-  '^n': 532,
-  '^c': 540,
-  '^o': 548,
-  '^t': 556,
-  '^a': 564,
-  '^l': 572,
-  '^g': 580,
-  '^h': 588,
-  '^pi': 596,
-  '^e': 604,
-  '^~': 612
+  '`': 374,
+  'rad': 385,
+  '^(': 391,
+  '^)': 399,
+  '^+': 407,
+  '^-': 415,
+  '^*': 423,
+  '^/': 431,
+  '^0': 439,
+  '^1': 447,
+  '^2': 455,
+  '^3': 463,
+  '^4': 471,
+  '^5': 479,
+  '^6': 487,
+  '^7': 495,
+  '^8': 503,
+  '^9': 511,
+  '^x': 519,
+  '^s': 527,
+  '^im': 535,
+  '^n': 543,
+  '^c': 551,
+  '^o': 559,
+  '^t': 567,
+  '^a': 575,
+  '^l': 583,
+  '^g': 591,
+  '^h': 599,
+  '^pi': 607,
+  '^e': 615,
+  '^~': 623,
+  '^`': 631,
 }
 
 def genRender(eq, exp=False):
@@ -88,7 +90,7 @@ def genRender(eq, exp=False):
       i += 1
       continue
     
-    if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "=", ".", "~"):
+    if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "=", ".", "~", "`"):
       print(f" Appending digit '{eq[i]}'")
       char = readGlyph(begWth + eq[i])
       render = add2dArrays(render, char, AbarHt=barHt)
@@ -101,13 +103,15 @@ def genRender(eq, exp=False):
       contents = Evaluator.Between(eq[i:], "(", ")")
       renderedConts = genRender(contents, exp)
       parenHeight = max(0, len(renderedConts) - (7 if exp else 10))
-
+      
+      
       render = add2dArrays(
         render,
-        readGlyph(begWth + "(", -parenHeight),
+        readGlyph(begWth + "(", -parenHeight, exp),
         AbarHt=barHt,
         BbarHt=lastFinishedBarHt,
       )
+      print2dArray(render)
       barHt = max(barHt, lastFinishedBarHt)
       render = add2dArrays(
         render,
@@ -117,7 +121,7 @@ def genRender(eq, exp=False):
       )
       render = add2dArrays(
         render,
-        readGlyph(begWth + ")", parenHeight),
+        readGlyph(begWth + ")", parenHeight, exp),
         AbarHt=barHt,
         BbarHt=lastFinishedBarHt,
       )
@@ -187,7 +191,7 @@ def genRender(eq, exp=False):
         den = genRender(den, True)
 
         fraction = [
-          [False] * (max(len(num[0]), len(den[0])) + 2 + (max(len(num[0]), len(den[0])) % 2))
+          [False] * (max(len(num[0]), len(den[0])) + 1 + (max(len(num[0]), len(den[0])) % 2))
           for _ in range(len(num) + len(den) + 2)
         ]
         fraction = merge2dArrays(
@@ -228,7 +232,7 @@ def genRender(eq, exp=False):
         stem = [[False, False]] + ([[False, True]] * ((len(radicand) + 1) // 2))
         stem += [[True, False]] * ((len(radicand) - (len(radicand) + 1) // 2) - 4)
         radical = [[False] * (5 + len(radicand[0]) + len(n[0])) for _ in range(max(len(radicand) + 2, len(radicand) + len(n) - 2))]
-        radical = merge2dArrays(radical, n, 0, len(radical) - len(n) - 4)
+        radical = merge2dArrays(radical, n, 0, len(radical) - len(n) - (1 if exp else 2))
         radical = merge2dArrays(radical, readGlyph("rad"), len(n[0]) - 2, 0)
         radical = merge2dArrays(radical, stem, len(n[0]) + 1, 4)
         radical = merge2dArrays(radical, radicand, len(n[0]) + 3, 0)
@@ -264,14 +268,14 @@ def genRender(eq, exp=False):
   return render
 
 
-def readGlyph(g, resParen=0):
+def readGlyph(g, resParen = 0, exp = False):
   with open("glyphs.txt", "r") as glyphs:
     glyphs = glyphs.readlines()
     line = glyphs[glyphDict[g]].replace("\n", "").replace(g, "", 1).replace(":", "")
 
     width = 6 if len(line) == 0 else int(line.rpartition("x")[0])
     height = 10 if len(line) == 0 else int(line.rpartition("x")[2])
-
+    
     glyph = [[False] * width] * height
 
     for y in range(height):
@@ -281,13 +285,16 @@ def readGlyph(g, resParen=0):
       ]
       line = [False] * (width - len(line)) + line
       glyph[y] = line
-
+      
     for p in range(abs(resParen)):
+      print(p)
       glyph.insert(
         4,
-        [False, True, False, False]
-        if resParen < 0
-        else [False, False, False, True],
+        ([False, True, False] if resParen < 0 else [False, False, True]) if exp 
+        else ([False, True, False, False]
+          if resParen < 0
+          else [False, False, False, True]
+          )
       )
 
     return glyph
@@ -356,7 +363,10 @@ def print2dArray(arr, bh = None):
   print("--PRERENDER--")
   
 
-equation = r"\im\im\im"
+equation = r"\frac{\sqrt{90}{\im}-(\sqrt{90}{\im})^{~1}}{2\im}"
+equation = r"\frac{\sqrt{90}{\im}-(\sqrt{90}{\im})}{2\im}"
+equation = r"\sqrt{90}{\im}"
+
 
 ans = str(Evaluator.Evaluate(equation, True)).replace("-0", "").replace("-", "~", 1).replace("(", "").replace(")", "").replace("11j", "111j").replace("1j", "j").replace("+0j", "").replace("j", r"\im")
 renderANS = genRender("=" + ("0" if ans == r"0\im" else ans))
@@ -365,4 +375,12 @@ renderEQ = genRender(equation)
 print2dArray(renderEQ)
 print2dArray(renderANS)
 
+# Generate dictionary for glyphs
+"""
+with open("glyphs.txt") as glyphs:
+  glyphs = glyphs.readlines()
+  for dictEnt in [(f"  '{line.rpartition("x")[0][:-1]}': {indx}," if "x" in line
+              else f"  '{line[:-2]}': {indx},") for indx, line in enumerate(glyphs) if line.endswith(":\n")]:
+    print(dictEnt)
+"""
 
