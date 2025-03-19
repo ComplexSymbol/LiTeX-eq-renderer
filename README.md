@@ -36,7 +36,7 @@ Complex numbers are not specified with the letter i: "4+3i", but rather with the
 ### Special constants:
 All special constants: pi, e, etc.. require an escape sequence to render and evaluate properly. eg: "\e^{2\im\pi}"
 
-### Example render:
+## Example render:
 r"1 + e^{2\pi} - (3x \sqrt{ \frac{ sin(4) }{ 5 } log_{6}(7) * 8} / 9)^{ 10 }"
 ```
                                                                                                                                                                                                                                                                                                                                                         
