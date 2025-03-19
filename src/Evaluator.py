@@ -35,27 +35,12 @@ def Evaluate(eq, replace = False):
       raise ValueError("Incomplete expression")
 
     #replace - with +- because 3-2^{4} evaluates as 316
-    eq = eq[0] + eq[1:].replace("-", "+-")
+    eq = eq.replace("-", "+-")
     eq = eq.replace("~", "-")
     eq = eq.replace("log-", "log_")
     eq = eq.replace(r"\im", "j")
   
-  # Add implicit multiplication
-  i = 0
-  while i < len(eq) - 1:
-    # 3 main causes: num*func, paren*func, paren*paren
-    if ((eq[i].isdigit() and eq[i + 1] == "\\") or # 5\pi
-        (eq[i].isdigit() and eq[i + 1] == "(") or # 2(3 ...
-        (eq[i].isdigit() and eq[i + 1].isalpha() and eq[i + 1] != "j") or # 9sin(...
-        (eq[i] == "j" and eq[i + 1] == "j") or
-        (eq[i].isalpha() and eq[i + 1] == "\\") or # \pi\e, X: (\pi
-        (eq[i] == ")" and eq[i + 1] == "\\") or # ...4)\pi
-        (eq[i] == ")" and eq[i + 1] == "(") or # ...3)(6...
-        (eq[i] == "}" and eq[i + 1].isdigit())): # ...2}7
-      eq = eq[:i + 1] + "*" + eq[i + 1:] # Insert multiplication
-    i += 1
-  
-  print(f"Evaluating \'{eq}\'")
+  eq = impMult(eq)
   
   # First, change constants into numbers
   specials = ["pi", "e"]
@@ -67,7 +52,10 @@ def Evaluate(eq, replace = False):
     eq = eq.replace("\\" + specials[tries.index(True)], 
                     str(values[specials[tries.index(True)]]))
     tries[tries.index(True)] = False
+  eq = impMult(eq)
   print(f"   Eq is {eq} after replacing constants")
+  
+  print(f"Evaluating \'{eq}\'")
   
   # P - Parenthetical function (trig)
   while any(trigs in eq for trigs in ["sin", "cos", "tan", "sec", "csc", "cot"]):
@@ -86,7 +74,7 @@ def Evaluate(eq, replace = False):
     
     print(f"  Found trig function {func} with contents {contents}")
     eq = eq.replace(f"{func[1:] + "^{-1}" if func[0] == "a" else func}({contents})", 
-                    str(SpecialTrig(func, Evaluate(contents), False)).replace("(", "").replace(")", ""))
+                    str(SpecialTrig(func, Evaluate(contents), False)))
   print(f"   Eq is {eq} after evaluating trig functions")
   
   # P - Parenthetical function (log)  
@@ -97,18 +85,22 @@ def Evaluate(eq, replace = False):
     contents = Between(eq[location + len(base) + 2:], "(", ")")
     
     eq = eq.replace("log_{"+base+"}" + f"({contents})", 
-                    str(cmath.log(Evaluate(contents), Evaluate(base))).replace("(", "").replace(")", ""))
+                    str(cmath.log(Evaluate(contents), Evaluate(base))))
   
   print(f"   Eq is {eq} after evaluating logarithms")
   
   # P - Parenthesis
   while "(" in eq:
     contents = Between(eq, "(", ")")
-    if isFloat(contents):
-      break
+    
+    sign = 1
+    if eq[eq.index("(" + contents) - 1] == "-":
+      sign = -1
+      eq = eq[:eq.index("(" + contents) - 1] + eq[eq.index("(" + contents):]
+    print(sign)
     
     eq = eq.replace(f"({contents})", 
-                    str(Evaluate(contents)).replace("(", "").replace(")", ""))
+                    str(sign * Evaluate(contents)).replace("(", "").replace(")", ""), 1)
   print(f"   Eq is {eq} after evaluating parentheticals")
 
   # E - Exponents
@@ -122,7 +114,7 @@ def Evaluate(eq, replace = False):
     
     print(f"  Found exponent with base {base} and exponent {exp}")
     eq = eq.replace(base + "^{"+exp+"}",
-                    str(toFloat(pow(toFloat(base), Evaluate(exp)))).replace("(", "").replace(")", ""))
+                    str(toFloat(pow(toFloat(base), Evaluate(exp)))))
   print(f"   Eq is {eq} after evaluating exponents")
 
   # E - Exponents (square root)
@@ -134,7 +126,7 @@ def Evaluate(eq, replace = False):
     print(f"  Found an {nthroot} degree radical containing {contents}")
     
     eq = eq.replace(r"\sqrt{"+nthroot+"}" + "{"+contents+"}", 
-                    str(toFloat(pow(Evaluate(contents), 1 / Evaluate(nthroot)))).replace("(", "").replace(")", ""))
+                    str(toFloat(pow(Evaluate(contents), 1 / Evaluate(nthroot)))))
   print(f"   Eq is {eq} after evaluating radicals")
   
   # D - Division (Fractions have priority)
@@ -144,9 +136,23 @@ def Evaluate(eq, replace = False):
     denom = Between(eq[start + len(numer) + 2:], "{", "}")
     
     eq = eq.replace(r"\frac{"+numer+"}" + "{"+denom+"}", 
-                    str(toFloat(Evaluate(numer) / Evaluate(denom))).replace("(", "").replace(")", ""))
+                    str(toFloat(Evaluate(numer) / Evaluate(denom))))
   print(f"   Eq is {eq} after evaluating fractions")
-
+  
+  # Reevaluate parenthesis because complex numbers
+  while "(" in eq:
+    contents = Between(eq, "(", ")")
+    
+    sign = 1
+    if eq[eq.index("(" + contents) - 1] == "-":
+      sign = -1
+      eq = eq[:eq.index("(" + contents) - 1] + eq[eq.index("(" + contents):]
+    print(sign)
+    
+    eq = eq.replace(f"({contents})", 
+                    str(sign * Evaluate(contents)).replace("(", "").replace(")", ""), 1)
+  print(f"   Eq is {eq} after re-evaluating parentheticals")
+  
   # DMAS - In that order
   skip = 0
   while set(eq[skip:]) & frozenset("/*+-") and not isFloat(eq[skip:]):
@@ -254,6 +260,23 @@ def SpecialTrig(func, x, simplify):
     else: return "-" + SpecialTrig(func, math.pi - x, simplify)
   
   return str(trigs[func](x))
+  
+# Add implicit multiplication
+def impMult(eq):
+  i = 0
+  while i < len(eq) - 1:
+    # 3 main causes: num*func, paren*func, paren*paren
+    if ((eq[i].isdigit() and eq[i + 1] == "\\") or # 5\pi
+        (eq[i].isdigit() and eq[i + 1] == "(") or # 2(3 ...
+        (eq[i].isdigit() and eq[i + 1].isalpha() and eq[i + 1] != "j") or # 9sin(...
+        (eq[i].isalpha() and eq[i + 1] == "\\") or # \pi\e, X: (\pi
+        (eq[i] == ")" and eq[i + 1] == "\\") or # ...4)\pi
+        (eq[i] == ")" and eq[i + 1] == "(") or # ...3)(6...
+        (eq[i] == ")" and eq[i + 1].isdigit()) or # ...2}7
+        (eq[i] == "}" and eq[i + 1].isdigit())): # ...2}7
+      eq = eq[:i + 1] + "*" + eq[i + 1:] # Insert multiplication
+    i += 1
+  return eq
 
 # Finds string subset between char1 and char2, with nesting support
 def Between(string, char1, char2):
@@ -281,5 +304,6 @@ def toFloat(string):
     return complex(string)
   
   else: return float(string)
+  
   
   

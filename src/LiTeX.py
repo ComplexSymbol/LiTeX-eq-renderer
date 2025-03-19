@@ -111,7 +111,6 @@ def genRender(eq, exp=False):
         AbarHt=barHt,
         BbarHt=lastFinishedBarHt,
       )
-      print2dArray(render)
       barHt = max(barHt, lastFinishedBarHt)
       render = add2dArrays(
         render,
@@ -363,13 +362,13 @@ def print2dArray(arr, bh = None):
   print("--PRERENDER--")
   
 
-equation = r"\frac{\sqrt{90}{\im}-(\sqrt{90}{\im})^{~1}}{2\im}"
-equation = r"\frac{\sqrt{90}{\im}-(\sqrt{90}{\im})}{2\im}"
-equation = r"\sqrt{90}{\im}"
+equation = r"\pisin(3)"
 
-
-ans = str(Evaluator.Evaluate(equation, True)).replace("-0", "").replace("-", "~", 1).replace("(", "").replace(")", "").replace("11j", "111j").replace("1j", "j").replace("+0j", "").replace("j", r"\im")
-renderANS = genRender("=" + ("0" if ans == r"0\im" else ans))
+ans = str(Evaluator.Evaluate(equation, True))
+ans = (float(ans) if isinstance(ans, float) else
+      str(complex(ans).real) + ("{0:+.03f}".format(complex(ans).imag) if 
+                                complex(ans).imag != 0 else "")).replace("-", "~", 1).replace("j", "\im")
+renderANS = genRender("=" + ans)
 renderEQ = genRender(equation)
 
 print2dArray(renderEQ)
