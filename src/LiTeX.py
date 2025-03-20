@@ -72,6 +72,7 @@ glyphDict = {
   '^e': 615,
   '^~': 623,
   '^`': 631,
+  '^.': 647,
 }
 
 def genRender(eq, exp=False):
@@ -250,7 +251,6 @@ def genRender(eq, exp=False):
     else:
       raise Exception(f" Unidentified character: {eq[i]}")
     
-    print2dArray(render)
     i += 1
 
   print("Removing overhead...")
@@ -326,7 +326,6 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
     else max(len(a), relHt + len(b) - overlap)
   )
   newArray = merge2dArrays(newArray, a, 0, abs(diff) if diff < 0 else 0)
-  print2dArray(newArray)
   newArray = merge2dArrays(
     newArray,
     b,
@@ -365,12 +364,12 @@ def print2dArray(arr, bh = None):
   print("--PRERENDER--")
   
 
-equation = r"\e^{\frac{1}{2}}"
+equation = r"\sqrt{\sqrt{2}{2}}{2}"
 
 ans = str(Evaluator.Evaluate(equation, True))
 print(ans)
 ans = (float(ans) if isinstance(ans, float) else
-      str(complex(ans).real) + ("{0:+f}".format(complex(ans).imag) + r"\im" if 
+      "{0:g}".format(complex(ans).real) + ("{0:+g}".format(complex(ans).imag) + r"\im" if 
                                 complex(ans).imag != 0 else "")).replace("-", "~", 1).replace("j", r"\im")
 renderEQ = genRender(equation)
 renderANS = genRender("=" + ans)
