@@ -139,6 +139,7 @@ def genRender(eq, exp=False):
       ln = len(contents)
       contents = genRender(contents, True)
       
+      print(f"LastHeight: {lastHeight}")
       if isPwr:
         render = add2dArrays(
           render, contents, overlap=3 if exp else 4, relHt=lastHeight
@@ -249,6 +250,7 @@ def genRender(eq, exp=False):
     else:
       raise Exception(f" Unidentified character: {eq[i]}")
     
+    print2dArray(render)
     i += 1
 
   print("Removing overhead...")
@@ -261,7 +263,7 @@ def genRender(eq, exp=False):
       break
   render.insert(0, [False] * len(render[0]))
   print(f"Removed empty overhead line [{max(0,count - 1)}]")
-
+  
   print(f"Finished parsing {eq}")
   lastFinishedBarHt = barHt
   return render
@@ -308,7 +310,7 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
     AbarHt = (len(a) // 2) - 1
   if BbarHt == -1:
     BbarHt = (len(b) // 2) - 1
-  diff = AbarHt - BbarHt
+  diff = (AbarHt - BbarHt) if overlap == -1 else 0
 
   print(
     f"Add2dArrays ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}"
@@ -324,6 +326,7 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
     else max(len(a), relHt + len(b) - overlap)
   )
   newArray = merge2dArrays(newArray, a, 0, abs(diff) if diff < 0 else 0)
+  print2dArray(newArray)
   newArray = merge2dArrays(
     newArray,
     b,
@@ -362,14 +365,15 @@ def print2dArray(arr, bh = None):
   print("--PRERENDER--")
   
 
-equation = r"\pisin(3)"
+equation = r"\e^{\frac{1}{2}}"
 
 ans = str(Evaluator.Evaluate(equation, True))
+print(ans)
 ans = (float(ans) if isinstance(ans, float) else
-      str(complex(ans).real) + ("{0:+.03f}".format(complex(ans).imag) if 
-                                complex(ans).imag != 0 else "")).replace("-", "~", 1).replace("j", "\im")
-renderANS = genRender("=" + ans)
+      str(complex(ans).real) + ("{0:+f}".format(complex(ans).imag) + r"\im" if 
+                                complex(ans).imag != 0 else "")).replace("-", "~", 1).replace("j", r"\im")
 renderEQ = genRender(equation)
+renderANS = genRender("=" + ans)
 
 print2dArray(renderEQ)
 print2dArray(renderANS)

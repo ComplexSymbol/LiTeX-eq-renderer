@@ -97,8 +97,7 @@ def Evaluate(eq, replace = False):
     if eq[eq.index("(" + contents) - 1] == "-":
       sign = -1
       eq = eq[:eq.index("(" + contents) - 1] + eq[eq.index("(" + contents):]
-    print(sign)
-    
+
     eq = eq.replace(f"({contents})", 
                     str(sign * Evaluate(contents)).replace("(", "").replace(")", ""), 1)
   print(f"   Eq is {eq} after evaluating parentheticals")
@@ -147,8 +146,7 @@ def Evaluate(eq, replace = False):
     if eq[eq.index("(" + contents) - 1] == "-":
       sign = -1
       eq = eq[:eq.index("(" + contents) - 1] + eq[eq.index("(" + contents):]
-    print(sign)
-    
+
     eq = eq.replace(f"({contents})", 
                     str(sign * Evaluate(contents)).replace("(", "").replace(")", ""), 1)
   print(f"   Eq is {eq} after re-evaluating parentheticals")
