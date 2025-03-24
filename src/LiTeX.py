@@ -60,18 +60,19 @@ glyphDict = {
   '^x': 519,
   '^s': 527,
   '^im': 535,
-  '^n': 543,
-  '^c': 551,
-  '^o': 559,
-  '^t': 567,
-  '^a': 575,
-  '^l': 583,
-  '^g': 591,
-  '^h': 599,
-  '^pi': 607,
-  '^e': 615,
-  '^~': 623,
-  '^`': 631,
+  '^i': 543,
+  '^n': 551,
+  '^c': 559,
+  '^o': 567,
+  '^t': 575,
+  '^a': 583,
+  '^l': 591,
+  '^g': 599,
+  '^h': 607,
+  '^pi': 615,
+  '^e': 623,
+  '^~': 631,
+  '^`': 639,
   '^.': 647,
 }
 
@@ -233,7 +234,7 @@ def genRender(eq, exp=False):
         stem = [[False, False]] + ([[False, True]] * ((len(radicand) + 1) // 2))
         stem += [[True, False]] * ((len(radicand) - (len(radicand) + 1) // 2) - 4)
         radical = [[False] * (5 + len(radicand[0]) + len(n[0])) for _ in range(max(len(radicand) + 2, len(radicand) + len(n) - 2))]
-        radical = merge2dArrays(radical, n, 0, len(radical) - len(n) - (1 if exp else 2))
+        radical = merge2dArrays(radical, n, 0, (len(radical) - len(n)) // 3)
         radical = merge2dArrays(radical, readGlyph("rad"), len(n[0]) - 2, 0)
         radical = merge2dArrays(radical, stem, len(n[0]) + 1, 4)
         radical = merge2dArrays(radical, radicand, len(n[0]) + 3, 0)
@@ -288,7 +289,6 @@ def readGlyph(g, resParen = 0, exp = False):
       glyph[y] = line
       
     for p in range(abs(resParen)):
-      print(p)
       glyph.insert(
         4,
         ([False, True, False] if resParen < 0 else [False, False, True]) if exp 
@@ -363,8 +363,8 @@ def print2dArray(arr, bh = None):
     print()
   print("--PRERENDER--")
   
-
-equation = r"\sqrt{\sqrt{2}{2}}{2}"
+equation = r"1+3-(3*\sqrt{2}{\frac{sin(\frac{5\pi}{6})}{7}/log_{8}(9)})^{10}"
+equation = r"joe"
 
 ans = str(Evaluator.Evaluate(equation, True))
 print(ans)
@@ -377,8 +377,8 @@ renderANS = genRender("=" + ans)
 print2dArray(renderEQ)
 print2dArray(renderANS)
 
-# Generate dictionary for glyphs
 """
+# Generate dictionary for glyphs
 with open("glyphs.txt") as glyphs:
   glyphs = glyphs.readlines()
   for dictEnt in [(f"  '{line.rpartition("x")[0][:-1]}': {indx}," if "x" in line

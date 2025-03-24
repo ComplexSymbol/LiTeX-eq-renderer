@@ -74,7 +74,7 @@ def Evaluate(eq, replace = False):
     
     print(f"  Found trig function {func} with contents {contents}")
     eq = eq.replace(f"{func[1:] + "^{-1}" if func[0] == "a" else func}({contents})", 
-                    str(SpecialTrig(func, Evaluate(contents), False)))
+                    str(trigs[func](Evaluate(contents))))
   print(f"   Eq is {eq} after evaluating trig functions")
   
   # P - Parenthetical function (log)  
@@ -110,6 +110,9 @@ def Evaluate(eq, replace = False):
     i = 0
     while not isFloat(eq[:eq.index("^")][i:]): i += 1
     base = eq[:eq.index("^")][i:]
+    
+    if eq[eq.index(base) - 1] == "+":
+      base = base[1:]
     
     print(f"  Found exponent with base {base} and exponent {exp}")
     eq = eq.replace(base + "^{"+exp+"}",
@@ -188,7 +191,7 @@ def Evaluate(eq, replace = False):
   
   ans = toFloat(eq)
   print(f"Finished evaluating; result: {ans}")
-  return complex(round(complex(ans).real, 6), round(complex(ans).imag, 6)) if replace else ans
+  return complex(round(complex(ans).real, 15), round(complex(ans).imag, 15)) if replace else ans
 
 def primeFactors(n):
   i = 2
@@ -266,7 +269,7 @@ def impMult(eq):
     # 3 main causes: num*func, paren*func, paren*paren
     if ((eq[i].isdigit() and eq[i + 1] == "\\") or # 5\pi
         (eq[i].isdigit() and eq[i + 1] == "(") or # 2(3 ...
-        (eq[i].isdigit() and eq[i + 1].isalpha()) or # 9sin(...
+        (eq[i].isdigit() and eq[i + 1].isalpha() and eq[i + 1] != "j") or # 9sin(... but not 9j
         (eq[i].isalpha() and eq[i + 1].isdigit()) or # \pi3...
         (eq[i].isalpha() and eq[i + 1] == "\\") or # \pi\e, X: (\pi
         (eq[i] == "j" and eq[i + 1].isalpha()) or # jsin(...
