@@ -363,8 +363,7 @@ def print2dArray(arr, bh = None):
     print()
   print("--PRERENDER--")
   
-equation = r"1+3-(3*\sqrt{2}{\frac{sin(\frac{5\pi}{6})}{7}/log_{8}(9)})^{10}"
-equation = r"joe"
+equation = r"1 + 3 - (1 + \im)^{1}"
 
 ans = str(Evaluator.Evaluate(equation, True))
 print(ans)

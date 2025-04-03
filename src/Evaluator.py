@@ -34,7 +34,7 @@ def Evaluate(eq, replace = False):
     if '`' in eq:
       raise ValueError("Incomplete expression")
 
-    #replace - with +- because 3-2^{4} evaluates as 316
+    #replace - with +- because otherwise 1-2^{2} evaluates as 14
     eq = eq.replace("-", "+-")
     eq = eq.replace("~", "-")
     eq = eq.replace("log-", "log_")
@@ -100,6 +100,7 @@ def Evaluate(eq, replace = False):
 
     eq = eq.replace(f"({contents})", 
                     str(sign * Evaluate(contents)).replace("(", "").replace(")", ""), 1)
+    
   print(f"   Eq is {eq} after evaluating parentheticals")
 
   # E - Exponents
@@ -156,6 +157,7 @@ def Evaluate(eq, replace = False):
   
   # DMAS - In that order
   skip = 0
+  eq = eq.replace(" ", "")
   while set(eq[skip:]) & frozenset("/*+-") and not isFloat(eq[skip:]):
     print(f"Finding operations in {eq[skip:]}")
     
