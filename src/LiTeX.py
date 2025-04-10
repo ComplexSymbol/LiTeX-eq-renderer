@@ -1,5 +1,6 @@
 import Evaluator
 import math
+#import DictGen
 
 lastFinishedBarHt = None
 logging = False
@@ -23,7 +24,7 @@ glyphDict = {
   '~': 165,
   '/': 176,
   '.': 187,
-  '': 198,
+  'x': 198,
   's': 209,
   'i': 220,
   'im': 231,
@@ -86,11 +87,10 @@ def genRender(eq, exp=False):
   hang = 0
 
   while i < len(eq):
-    print(f"{' ' * (i + len(str(i)) + 31)}V")
-    print(f"Parsing char: '{eq[i]}' at index {i} of {eq} with hang {hang}")
     if eq[i] == " ":
       i += 1
       continue
+    print(f"Parsing char: '{eq[i]}' at index {i} of {eq[:i] + '[' + eq[i] + ']' + eq[i + 1:]} with hang {hang}")
     
     if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "=", ".", "~", "`"):
       print(f" Appending digit '{eq[i]}'")
@@ -363,25 +363,24 @@ def print2dArray(arr, bh = None):
     print()
   print("--PRERENDER--")
   
-equation = r"1 + 3 - (1 + \im)^{1}"
+equation = r"4x^{3} - 2x^{2} + 3x - 1=0"
+eq = equation
 
-ans = str(Evaluator.Evaluate(equation, True))
+if "=" in eq:
+  indx = eq.index("=")
+  eq = eq[:indx] + " - ("+eq[indx + 1:]+")"
+  
+ans = str(Evaluator.Evaluate(eq, "x" in eq, True))
 print(ans)
+
 ans = (float(ans) if isinstance(ans, float) else
       "{0:g}".format(complex(ans).real) + ("{0:+g}".format(complex(ans).imag) + r"\im" if 
                                 complex(ans).imag != 0 else "")).replace("-", "~", 1).replace("j", r"\im")
+
 renderEQ = genRender(equation)
-renderANS = genRender("=" + ans)
+renderANS = genRender(("x" if "x" in equation else "") + "=" + ans)
 
 print2dArray(renderEQ)
 print2dArray(renderANS)
 
-"""
-# Generate dictionary for glyphs
-with open("glyphs.txt") as glyphs:
-  glyphs = glyphs.readlines()
-  for dictEnt in [(f"  '{line.rpartition("x")[0][:-1]}': {indx}," if "x" in line
-              else f"  '{line[:-2]}': {indx},") for indx, line in enumerate(glyphs) if line.endswith(":\n")]:
-    print(dictEnt)
-"""
 
