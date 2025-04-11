@@ -54,6 +54,8 @@ def Evaluate(eq, solve = False, replace = False):
   eq = impMult(eq)
   print(f"   Eq is {eq} after replacing constants")
   
+  eq = eq.replace(r"*\perm*", r"\perm").replace(r"*\comb*", r"\comb")
+  
   if solve:
     return NewtonMethod(eq, 10, 0.001)
   
@@ -152,7 +154,25 @@ def Evaluate(eq, solve = False, replace = False):
 
     eq = eq.replace(f"({contents})", 
                     str(sign * Evaluate(contents)).replace("(", "").replace(")", ""), 1)
-
+  
+  # Permutations and Combinations
+  while r"\perm" in eq or r"\comb" in eq:
+    isComb = r"\comb" in eq
+    indx = eq.index(r"\comb" if isComb else r"\perm")
+    
+    i = 0
+    while not isFloat(eq[:indx][i:]):
+      i += 1
+    n = eq[:indx][i:]
+    
+    i = len(eq)
+    while not isFloat(eq[indx + 5:][:i]):
+      i -= 1
+    r = eq[indx + 5:][:i]
+    
+    eq = eq.replace(n + (r"\comb" if isComb else r"\perm") + r,
+                    str(math.perm(int(n), int(r)) / (math.factorial(int(r)) if isComb else 1)))
+  
   # DMAS - In that order
   skip = 0
   eq = eq.replace(" * ", "*").replace(" + ", "+").replace(" / ", "/")
