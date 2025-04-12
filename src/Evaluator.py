@@ -28,13 +28,13 @@ def Evaluate(eq, solve = False, replace = False):
   if isFloat(eq):
     return toFloat(eq)
   
-  print(f"Standardizing eq : '{eq}'")
+  print(f"Standardizing eq: '{eq}'")
   
   if replace:
     if '`' in eq:
       raise ValueError("Incomplete expression")
 
-    eq = eq.replace(" - ", " +-")
+    #eq = eq.replace(" - ", " +-")
     eq = eq.replace("~", "-")
     eq = eq.replace("log-", "log_")
     eq = eq.replace(r"\im", "j")
@@ -52,14 +52,14 @@ def Evaluate(eq, solve = False, replace = False):
                     str(values[specials[tries.index(True)]]))
     tries[tries.index(True)] = False
   eq = impMult(eq)
-  print(f"   Eq is {eq} after replacing constants")
+  #print(f"   Eq is {eq} after replacing constants")
   
   eq = eq.replace(r"*\perm*", r"\perm").replace(r"*\comb*", r"\comb")
   
   if solve:
-    return NewtonMethod(eq, 10, 0.001)
+    return NewtonMethod(eq, 10, 5, False)
   
-  print(f"Evaluating \'{eq}\'")
+  #print(f"Evaluating \'{eq}\'")
   
   # P - Parenthetical function (trig)
   while any(trigs in eq for trigs in ["sin", "cos", "tan", "sec", "csc", "cot"]):
@@ -76,7 +76,7 @@ def Evaluate(eq, solve = False, replace = False):
     
     contents = Between(eq[eq.index(func[1:] if func[0] == "a" else func) + (8 if func[0] == "a" else 3):], "(", ")")
     
-    print(f"  Found trig function {func} with contents {contents}")
+    #print(f"  Found trig function {func} with contents {contents}")
     eq = eq.replace(f"{func[1:] + "^{-1}" if func[0] == "a" else func}({contents})", 
                     str(trigs[func](Evaluate(contents))))
 
@@ -84,8 +84,8 @@ def Evaluate(eq, solve = False, replace = False):
   while "log" in eq: 
     location = eq.index("log")
     base = Between(eq[location + 3:], "{", "}")
-    contents = Between(eq[location + len(base) + 2:], "(", ")")
-    print(f"  Found logarithm with base {base} and contents {contents}")
+    contents = Between(eq[location + len(base) + 6:], "(", ")")
+    #print(f"  Found logarithm with base {base} and contents {contents}")
     
     eq = eq.replace("log_{"+base+"}" + f"({contents})", 
                     str(cmath.log(Evaluate(contents), Evaluate(base))))
@@ -94,7 +94,7 @@ def Evaluate(eq, solve = False, replace = False):
   # P - Parenthesis
   while "(" in eq:
     contents = Between(eq, "(", ")")
-    print(f"  Found parenthesis with contents{contents}")
+    #print(f"  Found parenthesis with contents{contents}")
     
     sign = 1
     if eq[eq.index("(" + contents) - 1] == "-":
@@ -118,7 +118,7 @@ def Evaluate(eq, solve = False, replace = False):
     if eq[eq.index(base) - 1] == "+":
       base = base[1:]
     
-    print(f"  Found exponent with base {base} and exponent {exp}")
+    #print(f"  Found exponent with base {base} and exponent {exp}")
     eq = eq.replace(base + "^{"+exp+"}",
                     str(toFloat(pow(toFloat(base), Evaluate(exp)))))
 
@@ -127,7 +127,7 @@ def Evaluate(eq, solve = False, replace = False):
     start = eq.find(r"\sqrt") + 5
     nthroot = Between(eq[start:], "{", "}")
     contents = Between(eq[start + len(nthroot) + 2:], "{", "}")
-    print(f"  Found a {nthroot} degree radical containing {contents}")
+    #print(f"  Found a {nthroot} degree radical containing {contents}")
     
     eq = eq.replace(r"\sqrt{"+nthroot+"}" + "{"+contents+"}", 
                     str(toFloat(pow(Evaluate(contents), 1 / Evaluate(nthroot)))))
@@ -137,7 +137,7 @@ def Evaluate(eq, solve = False, replace = False):
     start = eq.find(r"\frac") + 5
     numer = Between(eq[start:], "{", "}")
     denom = Between(eq[start + len(numer) + 2:], "{", "}")
-    print(f"  Found a fraction with numerator {numer} and denominator {denom}")
+    #print(f"  Found a fraction with numerator {numer} and denominator {denom}")
     
     eq = eq.replace(r"\frac{"+numer+"}" + "{"+denom+"}", 
                     str(toFloat(Evaluate(numer) / Evaluate(denom))))
@@ -145,7 +145,7 @@ def Evaluate(eq, solve = False, replace = False):
   # Reevaluate parenthesis because complex numbers
   while "(" in eq:
     contents = Between(eq, "(", ")")
-    print(f"  Found parenthesis with contents{contents}")
+    #print(f"  Found parenthesis with contents{contents}")
     
     sign = 1
     if eq[eq.index("(" + contents) - 1] == "-":
@@ -181,12 +181,10 @@ def Evaluate(eq, solve = False, replace = False):
       skip += 1
       continue
     
-    print(eq[skip:])
-    
     curOp = "/" if "/" in eq[skip:] else (
             "*" if "*" in eq[skip:] else (
-            "+" if "+" in eq[skip:] else (
             "-" if "-" in eq[skip:] else (
+            "+" if "+" in eq[skip:] else (
             None))))
     
     if curOp == "-":
@@ -212,7 +210,6 @@ def Evaluate(eq, solve = False, replace = False):
     
     if isFloat(f"{first}{curOp}{second}"):
       skip = eq[skip:].index(curOp) + 1
-      print(f"setting skip to {skip}")
       continue
     
     print(f"  Found operator \'{curOp}\' with first \'{first}\' and second \'{second}\'")
@@ -221,7 +218,7 @@ def Evaluate(eq, solve = False, replace = False):
     skip = 0
 
   ans = toFloat(eq)
-  print(f"Finished evaluating; result: {ans}")
+  print(f"  Finished evaluating; result: {ans}")
   return complex(round(complex(ans).real, 15), round(complex(ans).imag, 15)) if replace else ans
 
 def primeFactors(n):
@@ -283,15 +280,24 @@ def toFloat(string):
   
   else: return float(string)
   
-inc = 0.000001
-def NewtonMethod(eq, guess, accuracy = 0.1):
-  shouldCont = True
-  while shouldCont:
+inc = 0.001
+def NewtonMethod(eq, guess, accuracy, shouldGuessImag):
+  while True:
     inputEQ = eq.replace("x", str(guess))
     funcAtGuess = Evaluate(inputEQ)
-    shouldCont = abs(funcAtGuess) > accuracy
+    if abs(complex(funcAtGuess).real + complex(funcAtGuess).imag) < 2 * math.pow(10, -accuracy - 1):
+      break
+    
     derivAtGuess = (funcAtGuess - Evaluate(eq.replace("x", str(guess - inc)))) / inc
-    guess = (guess * derivAtGuess - funcAtGuess) / derivAtGuess
-
-  return guess
-
+    testGuess = (guess * derivAtGuess - funcAtGuess) / derivAtGuess
+    if not shouldGuessImag and complex(Evaluate(eq.replace("x", str(testGuess)))).imag != 0:
+      print(f"Decrementing guess {guess} by 0.5")
+      guess += -0.5 if derivAtGuess.real < 0 else 0.5
+      continue
+    
+    guess = testGuess
+    print(f"New Guess: {guess}")
+  
+  return complex(round(complex(guess).real, accuracy), round(complex(guess).imag, accuracy))
+  
+    

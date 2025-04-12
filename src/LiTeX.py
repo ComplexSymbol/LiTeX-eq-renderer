@@ -92,10 +92,10 @@ def genRender(eq, exp=False):
     if eq[i] == " ":
       i += 1
       continue
-    print(f"Parsing char: '{eq[i]}' at index {i} of {eq[:i] + '[' + eq[i] + ']' + eq[i + 1:]} with hang {hang}")
+    print(f"Parsing char: '{eq[i]}' at index {i} of {eq[:i] + ' [' + eq[i] + '] ' + eq[i + 1:]} with hang {hang}")
     
     if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "=", ".", "~", "`"):
-      print(f" Appending digit '{eq[i]}'")
+      #print(f" Appending digit '{eq[i]}'")
       char = readGlyph(begWth + eq[i])
       render = add2dArrays(render, char, AbarHt=barHt)
       lastHeight = len(char)
@@ -103,7 +103,7 @@ def genRender(eq, exp=False):
       del char
   
     elif eq[i] == "(":
-      print(f" Found parenthesis")
+      #print(f" Found parenthesis")
       contents = Evaluator.Between(eq[i:], "(", ")")
       renderedConts = genRender(contents, exp)
       parenHeight = max(0, len(renderedConts) - (7 if exp else 10))
@@ -130,20 +130,20 @@ def genRender(eq, exp=False):
       )
       lastHeight = parenHeight + (7 if exp else 10) + hang
       
-      print(f"  setting i to {len(contents) + 1}")
+      #print(f"  setting i to {len(contents) + 1}")
       i += len(contents) + 1
       
       del contents, renderedConts, parenHeight
     
     elif eq[i] == "^" or eq[i] == "_":
       isPwr = eq[i] == "^"
-      print(f"Found exponent/subscript at index {i}")
+      #print(f"Found exponent/subscript at index {i}")
       
       contents = Evaluator.Between(eq[i:], "{", "}")
       ln = len(contents)
       contents = genRender(contents, True)
       
-      print(f"LastHeight: {lastHeight}")
+      #print(f"LastHeight: {lastHeight}")
       if isPwr:
         render = add2dArrays(
           render, contents, overlap=3 if exp else 4, relHt=lastHeight
@@ -157,7 +157,7 @@ def genRender(eq, exp=False):
       del isPwr, contents, ln
     
     elif eq[i] == "\\":
-      print("Found escape sequence")
+      #print("Found escape sequence")
       esc = None
       # Operator or escape character?
       try:
@@ -173,7 +173,7 @@ def genRender(eq, exp=False):
         if not any(tries):
           raise ValueError(f"Unidentified special character starting at: {eq[i:]}")
         
-        print(f"Found special character: {specials[tries.index(True)]}")
+        #print(f"Found special character: {specials[tries.index(True)]}")
         
         # Generate render for character, then append it to the render and increment i
         char = readGlyph(begWth + specials[tries.index(True)])
@@ -188,7 +188,7 @@ def genRender(eq, exp=False):
         # Numerator & Denominator for fraction.
         num = Evaluator.Between(eq[i:], "{", "}")
         den = Evaluator.Between(eq[i + len(num) + 7:], "{", "}")
-        print(f"Setting i to: {i + len(num) + len(den) + 8}" )
+        #print(f"Setting i to: {i + len(num) + len(den) + 8}" )
         i += len(num) + len(den) + 8
         
         num = genRender(num, True)
@@ -256,7 +256,7 @@ def genRender(eq, exp=False):
     
     i += 1
 
-  print("Removing overhead...")
+  #print("Removing overhead...")
   count = 0
   while True:
     if all(not p for p in render[0]):
@@ -265,7 +265,7 @@ def genRender(eq, exp=False):
     else:
       break
   render.insert(0, [False] * len(render[0]))
-  print(f"Removed empty overhead line [{max(0,count - 1)}]")
+  print(f"Removed {max(0,count - 1)} empty overhead lines")
   
   print(f"Finished parsing {eq}")
   lastFinishedBarHt = barHt
@@ -314,9 +314,7 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
     BbarHt = (len(b) // 2) - 1
   diff = (AbarHt - BbarHt) if overlap == -1 else 0
 
-  print(
-    f"Add2dArrays ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}"
-  )
+  #print(f"Add2dArrays ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}")
 
   newArray = [[False] * (len(a[0]) + len(b[0]))] * (
     max(
@@ -365,7 +363,7 @@ def print2dArray(arr, bh = None):
     print()
   print("--PRERENDER--")
   
-equation = r"4\perm3"
+equation = r"log_{x}(10)=10"
 eq = equation
 
 if "=" in eq:
@@ -373,8 +371,6 @@ if "=" in eq:
   eq = eq[:indx] + " - ("+eq[indx + 1:]+")"
   
 ans = str(Evaluator.Evaluate(eq, "x" in eq, True))
-print(ans)
-
 ans = (float(ans) if isinstance(ans, float) else
       "{0:g}".format(complex(ans).real) + ("{0:+g}".format(complex(ans).imag) + r"\im" if 
                                 complex(ans).imag != 0 else "")).replace("-", "~", 1).replace("j", r"\im")
