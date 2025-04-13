@@ -15,14 +15,14 @@ trigs = {
 }
 
 operate = {
-  '+': lambda x, y: toFloat(x) + toFloat(y),
-  '-': lambda x, y: toFloat(x) - toFloat(y),
-  '*': lambda x, y: toFloat(x) * toFloat(y),
-  '/': lambda x, y: toFloat(x) / toFloat(y)
+  0: lambda x, y: toFloat(x) / toFloat(y),
+  1: lambda x, y: toFloat(x) * toFloat(y),
+  2: lambda x, y: toFloat(x) + toFloat(y),
+  3: lambda x, y: toFloat(x) - toFloat(y)
 }
 
 # Follows strict PEDMAS
-def Evaluate(eq, solve = False, replace = False):
+def Evaluate(eq, solve = False, replace = False, guess = 10, SGI = False):
   global trigs, operate
   
   if isFloat(eq):
@@ -57,7 +57,7 @@ def Evaluate(eq, solve = False, replace = False):
   eq = eq.replace(r"*\perm*", r"\perm").replace(r"*\comb*", r"\comb")
   
   if solve:
-    return NewtonMethod(eq, 10, 5, False)
+    return NewtonMethod(eq, guess, 5, SGI)
   
   #print(f"Evaluating \'{eq}\'")
   
@@ -111,7 +111,7 @@ def Evaluate(eq, solve = False, replace = False):
     
     i = 0
     base = eq[:eq.index("^")]
-    while not isFloat(base) or ("j" in base and any(ch.isdigit() for ch in base)): 
+    while not isFloat(base): 
       i += 1
       base = eq[:eq.index("^")][i:]
 
@@ -123,8 +123,8 @@ def Evaluate(eq, solve = False, replace = False):
                     str(toFloat(pow(toFloat(base), Evaluate(exp)))))
 
   # E - Exponents (square root)
-  while r"\sqrt" in eq:
-    start = eq.find(r"\sqrt") + 5
+  while r"sqrt" in eq:
+    start = eq.index(r"\sqrt") + 5
     nthroot = Between(eq[start:], "{", "}")
     contents = Between(eq[start + len(nthroot) + 2:], "{", "}")
     #print(f"  Found a {nthroot} degree radical containing {contents}")
@@ -133,8 +133,8 @@ def Evaluate(eq, solve = False, replace = False):
                     str(toFloat(pow(Evaluate(contents), 1 / Evaluate(nthroot)))))
 
   # D - Division (Fractions have priority)
-  while r"\frac" in eq:
-    start = eq.find(r"\frac") + 5
+  while r"frac" in eq:
+    start = eq.index(r"\frac") + 5
     numer = Between(eq[start:], "{", "}")
     denom = Between(eq[start + len(numer) + 2:], "{", "}")
     #print(f"  Found a fraction with numerator {numer} and denominator {denom}")
@@ -174,49 +174,45 @@ def Evaluate(eq, solve = False, replace = False):
                     str(math.perm(int(n), int(r)) / (math.factorial(int(r)) if isComb else 1)))
   
   # DMAS - In that order
-  skip = 0
   eq = eq.replace(" * ", "*").replace(" + ", "+").replace(" / ", "/")
-  while set(eq[skip:]) & frozenset("/*+-") and not isFloat(eq[skip:]):
-    if eq[skip:][0] == "-":
-      skip += 1
+  eq = ("0" + eq) if eq[0] == "-" else eq
+  progress = -1
+  curOp = 0
+  print(f"  Finding operations in {eq}")
+  while set(eq) & frozenset("/*+-") and not isFloat(eq):
+    opStr = ("/", "*", "+", "-")[curOp]
+    
+    if not opStr in eq[max(0,progress):]:
+      curOp += 1
+      progress = -1
       continue
     
-    curOp = "/" if "/" in eq[skip:] else (
-            "*" if "*" in eq[skip:] else (
-            "-" if "-" in eq[skip:] else (
-            "+" if "+" in eq[skip:] else (
-            None))))
+    progress += 1
     
-    if curOp == "-":
-      if " " in eq[skip:]:
-        eq = eq.replace(" ", "")
-      if eq[skip:][eq[skip:].index("-") - 1] == "e":
-        skip = eq[skip:].index("-") + 1
-        continue
+    if eq[progress] != opStr or eq[progress - 1] == "e":
+      continue
     
-    eqIndxCurOp = skip + eq[skip:].index(curOp)
+    if " " in eq and curOp == 3:
+      eq = eq.replace(" ", "")
+      progress = -1
+      continue
     
-    before = eq[:eqIndxCurOp]
     i = 0
-    while not isFloat(before[i:]): 
-      i += 1
-    first = before[i:]
+    while not isFloat(eq[:progress][i:]): i += 1
+    first = eq[:progress][i:]
     
-    after = eq[eqIndxCurOp + 1:]
-    i = len(after)
-    while not isFloat(after[:i]):
+    i = len(eq[progress + 1:])
+    while not opIsFloat(eq[progress + 1:][:i]): 
+      print(eq[progress + 1:][:i])
       i -= 1
-    second = after[:i]
+    second = eq[progress + 1:][:i]
+  
+    repl = str(toFloat(operate[curOp](first, second))).replace("(", "").replace(")", "")
+    print(f"  Found operator \'{eq[progress]}\' with first \'{first}\' and second \'{second}\'. Result: {repl}")
+    eq = eq.replace(f"{first}{eq[progress]}{second}", 
+                    repl)
+    progress = len(repl) - 1
     
-    if isFloat(f"{first}{curOp}{second}"):
-      skip = eq[skip:].index(curOp) + 1
-      continue
-    
-    print(f"  Found operator \'{curOp}\' with first \'{first}\' and second \'{second}\'")
-    eq = eq.replace(f"{first}{curOp}{second}", 
-                    str(toFloat(operate[curOp](first, second))).replace("(", "").replace(")", ""))
-    skip = 0
-
   ans = toFloat(eq)
   print(f"  Finished evaluating; result: {ans}")
   return complex(round(complex(ans).real, 15), round(complex(ans).imag, 15)) if replace else ans
@@ -241,7 +237,7 @@ def impMult(eq):
     # 3 main causes: num*func, paren*func, paren*paren
     if ((eq[i].isdigit() and eq[i + 1] == "\\") or # 5\pi
         (eq[i].isdigit() and eq[i + 1] == "(") or # 2(3 ...
-        (eq[i].isdigit() and eq[i + 1].isalpha() and eq[i + 1] != "e") or # 9sin(... but not 3e
+        (eq[i].isdigit() and eq[i + 1].isalpha() and eq[i + 1] != "e" and eq[i + 1] != "j") or # 9sin(... but not 3e
         (eq[i].isalpha() and eq[i + 1].isdigit()) or # \pi3...
         (eq[i].isalpha() and eq[i + 1] == "\\") or # \pi\e, X: (\pi
         (eq[i] == "j" and eq[i + 1].isalpha()) or # jsin(...
@@ -260,7 +256,7 @@ def Between(string, char1, char2):
       return string[string.index(char1) + 1 : i]
   
   raise ValueError(f"Unable to find contents between {char1} and {char2}")
-     
+
 def isFloat(string):
   if string[0] == "+" or string[0] == " ": return False
   
@@ -270,7 +266,11 @@ def isFloat(string):
 
   except ValueError:
     return False
-  
+
+def opIsFloat(string):
+  return isFloat(string) and not (complex(toFloat(string)).real != 0 and 
+                                  complex(toFloat(string)).imag != 0)
+    
 def toFloat(string):
   string = str(string)
   
@@ -281,14 +281,23 @@ def toFloat(string):
   else: return float(string)
   
 inc = 0.001
-def NewtonMethod(eq, guess, accuracy, shouldGuessImag):
-  while True:
+def NewtonMethod(eq, guess, accuracy, shouldGuessImag, epsilon = 0.001, maxIter = 40):
+  if shouldGuessImag:
+    guess = guess + 0.1j
+
+  for i in range(maxIter):
+    if i == maxIter - 1:
+      raise ValueError(f"No root found under {maxIter} iterations")
+    
     inputEQ = eq.replace("x", str(guess))
     funcAtGuess = Evaluate(inputEQ)
     if abs(complex(funcAtGuess).real + complex(funcAtGuess).imag) < 2 * math.pow(10, -accuracy - 1):
       break
     
     derivAtGuess = (funcAtGuess - Evaluate(eq.replace("x", str(guess - inc)))) / inc
+    if abs(derivAtGuess) < epsilon:
+      raise ValueError(f"Function too flat... Possible asymptote. Try another guess. {derivAtGuess}")
+    
     testGuess = (guess * derivAtGuess - funcAtGuess) / derivAtGuess
     if not shouldGuessImag and complex(Evaluate(eq.replace("x", str(testGuess)))).imag != 0:
       print(f"Decrementing guess {guess} by 0.5")
@@ -297,7 +306,9 @@ def NewtonMethod(eq, guess, accuracy, shouldGuessImag):
     
     guess = testGuess
     print(f"New Guess: {guess}")
+    
   
   return complex(round(complex(guess).real, accuracy), round(complex(guess).imag, accuracy))
-  
-    
+
+
+

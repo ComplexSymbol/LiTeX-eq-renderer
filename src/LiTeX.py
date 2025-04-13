@@ -87,12 +87,13 @@ def genRender(eq, exp=False):
   barHt = 2 if exp else 4
   render = [[]] * (7 if exp else 10)
   hang = 0
-
+  eq = eq.replace(" ", "")
+  
   while i < len(eq):
     if eq[i] == " ":
       i += 1
       continue
-    print(f"Parsing char: '{eq[i]}' at index {i} of {eq[:i] + ' [' + eq[i] + '] ' + eq[i + 1:]} with hang {hang}")
+    print(f"Parsing char: {eq[:i] + ' [' + eq[i] + '] ' + eq[i + 1:]} with hang {hang}")
     
     if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "=", ".", "~", "`"):
       #print(f" Appending digit '{eq[i]}'")
@@ -236,7 +237,7 @@ def genRender(eq, exp=False):
         stem = [[False, False]] + ([[False, True]] * ((len(radicand) + 1) // 2))
         stem += [[True, False]] * ((len(radicand) - (len(radicand) + 1) // 2) - 4)
         radical = [[False] * (5 + len(radicand[0]) + len(n[0])) for _ in range(max(len(radicand) + 2, len(radicand) + len(n) - 2))]
-        radical = merge2dArrays(radical, n, 0, (len(radical) - len(n)) // 3)
+        radical = merge2dArrays(radical, n, 0, (len(radical) - len(n)) // 2)
         radical = merge2dArrays(radical, readGlyph("rad"), len(n[0]) - 2, 0)
         radical = merge2dArrays(radical, stem, len(n[0]) + 1, 4)
         radical = merge2dArrays(radical, radicand, len(n[0]) + 3, 0)
@@ -370,10 +371,11 @@ if "=" in eq:
   indx = eq.index("=")
   eq = eq[:indx] + " - ("+eq[indx + 1:]+")"
   
-ans = str(Evaluator.Evaluate(eq, "x" in eq, True))
+ans = str(Evaluator.Evaluate(eq, "x" in eq, True, 1.5, False))
 ans = (float(ans) if isinstance(ans, float) else
       "{0:g}".format(complex(ans).real) + ("{0:+g}".format(complex(ans).imag) + r"\im" if 
-                                complex(ans).imag != 0 else "")).replace("-", "~", 1).replace("j", r"\im")
+                                complex(ans).imag != 0 else "")).replace("j", r"\im")
+ans = "~" + ans[1:] if ans[0] == "-" else ans
 
 renderEQ = genRender(equation)
 renderANS = genRender(("x" if "x" in equation else "") + "=" + ans)
