@@ -57,7 +57,7 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, SGI = False):
   eq = eq.replace(r"*\perm*", r"\perm").replace(r"*\comb*", r"\comb")
   
   if solve:
-    return NewtonMethod(eq, guess, 5, SGI)
+    return NewtonMethod(eq, guess, 9, SGI)
   
   #print(f"Evaluating \'{eq}\'")
   
@@ -178,17 +178,18 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, SGI = False):
   eq = ("0" + eq) if eq[0] == "-" else eq
   progress = -1
   curOp = 0
-  print(f"  Finding operations in {eq}")
+  #print(f"  Finding operations in {eq}")
   while set(eq) & frozenset("/*+-") and not isFloat(eq):
     opStr = ("/", "*", "+", "-")[curOp]
     
-    if not opStr in eq[max(0,progress):]:
-      curOp += 1
+    if not opStr in eq[max(0, progress):]:
+      curOp += 1 if curOp < 3 else -1
       progress = -1
       continue
     
-    progress += 1
+    #print(f"({opStr}) |--| {eq[progress:]}")
     
+    progress += 1
     if eq[progress] != opStr or eq[progress - 1] == "e":
       continue
     
@@ -202,17 +203,16 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, SGI = False):
     first = eq[:progress][i:]
     
     i = len(eq[progress + 1:])
-    while not opIsFloat(eq[progress + 1:][:i]): 
-      print(eq[progress + 1:][:i])
-      i -= 1
+    while not opIsFloat(eq[progress + 1:][:i]): i -= 1
     second = eq[progress + 1:][:i]
   
     repl = str(toFloat(operate[curOp](first, second))).replace("(", "").replace(")", "")
-    print(f"  Found operator \'{eq[progress]}\' with first \'{first}\' and second \'{second}\'. Result: {repl}")
+    #print(f"  Found operator \'{eq[progress]}\' with first \'{first}\' and second \'{second}\'. Result: {repl}")
     eq = eq.replace(f"{first}{eq[progress]}{second}", 
                     repl)
-    progress = len(repl) - 1
-    
+    #print(f"setting progress from {progress} to {progress - len(first) + len(repl) - 1}")
+    progress = progress - len(first) + len(repl) - 1
+
   ans = toFloat(eq)
   print(f"  Finished evaluating; result: {ans}")
   return complex(round(complex(ans).real, 15), round(complex(ans).imag, 15)) if replace else ans
@@ -281,7 +281,7 @@ def toFloat(string):
   else: return float(string)
   
 inc = 0.001
-def NewtonMethod(eq, guess, accuracy, shouldGuessImag, epsilon = 0.001, maxIter = 40):
+def NewtonMethod(eq, guess, accuracy, shouldGuessImag, epsilon = 0.00001, maxIter = 100):
   if shouldGuessImag:
     guess = guess + 0.1j
 
@@ -300,8 +300,8 @@ def NewtonMethod(eq, guess, accuracy, shouldGuessImag, epsilon = 0.001, maxIter 
     
     testGuess = (guess * derivAtGuess - funcAtGuess) / derivAtGuess
     if not shouldGuessImag and complex(Evaluate(eq.replace("x", str(testGuess)))).imag != 0:
-      print(f"Decrementing guess {guess} by 0.5")
-      guess += -0.5 if derivAtGuess.real < 0 else 0.5
+      print(f"Decrementing guess {guess} by 1")
+      guess += -1 if derivAtGuess.real < 0 else 1
       continue
     
     guess = testGuess

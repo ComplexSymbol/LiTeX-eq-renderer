@@ -364,16 +364,16 @@ def print2dArray(arr, bh = None):
     print()
   print("--PRERENDER--")
   
-equation = r"log_{x}(10)=10"
+equation = r"x^{2}=~3"
 eq = equation
 
 if "=" in eq:
   indx = eq.index("=")
   eq = eq[:indx] + " - ("+eq[indx + 1:]+")"
   
-ans = str(Evaluator.Evaluate(eq, "x" in eq, True, 1.5, False))
+ans = str(Evaluator.Evaluate(eq, solve="x" in eq, replace=True, guess=1.5, SGI=True))
 ans = (float(ans) if isinstance(ans, float) else
-      "{0:g}".format(complex(ans).real) + ("{0:+g}".format(complex(ans).imag) + r"\im" if 
+      "{0:7f}".format(complex(ans).real).rstrip("0").rstrip(".") + ("{0:+7f}".format(complex(ans).imag).rstrip("0").rstrip(".") + r"\im" if 
                                 complex(ans).imag != 0 else "")).replace("j", r"\im")
 ans = "~" + ans[1:] if ans[0] == "-" else ans
 
