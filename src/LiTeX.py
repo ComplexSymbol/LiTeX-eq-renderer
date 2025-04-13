@@ -364,14 +364,16 @@ def print2dArray(arr, bh = None):
     print()
   print("--PRERENDER--")
   
-equation = r"x^{2}=~3"
+equation = r"1 / x - 1=0"
+equation = r"~ x^{2} + 3x - 5=0"
+#equation = r"3 * (4 + 5\im)"
 eq = equation
 
 if "=" in eq:
   indx = eq.index("=")
   eq = eq[:indx] + " - ("+eq[indx + 1:]+")"
   
-ans = str(Evaluator.Evaluate(eq, solve="x" in eq, replace=True, guess=1.5, SGI=True))
+ans = str(Evaluator.Evaluate(eq, solve="x" in eq, replace=True, guess=2, SGI=True))
 ans = (float(ans) if isinstance(ans, float) else
       "{0:7f}".format(complex(ans).real).rstrip("0").rstrip(".") + ("{0:+7f}".format(complex(ans).imag).rstrip("0").rstrip(".") + r"\im" if 
                                 complex(ans).imag != 0 else "")).replace("j", r"\im")

@@ -57,7 +57,7 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, SGI = False):
   eq = eq.replace(r"*\perm*", r"\perm").replace(r"*\comb*", r"\comb")
   
   if solve:
-    return NewtonMethod(eq, guess, 9, SGI)
+    return NewtonMethod(eq, guess, 8, SGI)
   
   #print(f"Evaluating \'{eq}\'")
   
@@ -174,7 +174,7 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, SGI = False):
                     str(math.perm(int(n), int(r)) / (math.factorial(int(r)) if isComb else 1)))
   
   # DMAS - In that order
-  eq = eq.replace(" * ", "*").replace(" + ", "+").replace(" / ", "/")
+  eq = eq.replace("+-", "-")
   eq = ("0" + eq) if eq[0] == "-" else eq
   progress = -1
   curOp = 0
@@ -187,7 +187,7 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, SGI = False):
       progress = -1
       continue
     
-    #print(f"({opStr}) |--| {eq[progress:]}")
+   # print(f"({opStr}) |--| {eq[progress:]}")
     
     progress += 1
     if eq[progress] != opStr or eq[progress - 1] == "e":
@@ -203,7 +203,7 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, SGI = False):
     first = eq[:progress][i:]
     
     i = len(eq[progress + 1:])
-    while not opIsFloat(eq[progress + 1:][:i]): i -= 1
+    while not isFloat(eq[progress + 1:][:i]): i -= 1
     second = eq[progress + 1:][:i]
   
     repl = str(toFloat(operate[curOp](first, second))).replace("(", "").replace(")", "")
@@ -258,7 +258,7 @@ def Between(string, char1, char2):
   raise ValueError(f"Unable to find contents between {char1} and {char2}")
 
 def isFloat(string):
-  if string[0] == "+" or string[0] == " ": return False
+  if string[0] == "+": return False
   
   try:
     toFloat(string)
@@ -283,7 +283,7 @@ def toFloat(string):
 inc = 0.001
 def NewtonMethod(eq, guess, accuracy, shouldGuessImag, epsilon = 0.00001, maxIter = 100):
   if shouldGuessImag:
-    guess = guess + 0.1j
+    guess = guess + 1j
 
   for i in range(maxIter):
     if i == maxIter - 1:
@@ -291,7 +291,7 @@ def NewtonMethod(eq, guess, accuracy, shouldGuessImag, epsilon = 0.00001, maxIte
     
     inputEQ = eq.replace("x", str(guess))
     funcAtGuess = Evaluate(inputEQ)
-    if abs(complex(funcAtGuess).real + complex(funcAtGuess).imag) < 2 * math.pow(10, -accuracy - 1):
+    if abs(funcAtGuess.real + funcAtGuess.imag) < 2 * math.pow(10, -accuracy - 1):
       break
     
     derivAtGuess = (funcAtGuess - Evaluate(eq.replace("x", str(guess - inc)))) / inc
@@ -299,7 +299,7 @@ def NewtonMethod(eq, guess, accuracy, shouldGuessImag, epsilon = 0.00001, maxIte
       raise ValueError(f"Function too flat... Possible asymptote. Try another guess. {derivAtGuess}")
     
     testGuess = (guess * derivAtGuess - funcAtGuess) / derivAtGuess
-    if not shouldGuessImag and complex(Evaluate(eq.replace("x", str(testGuess)))).imag != 0:
+    if not shouldGuessImag and Evaluate(eq.replace("x", str(testGuess))).imag != 0:
       print(f"Decrementing guess {guess} by 1")
       guess += -1 if derivAtGuess.real < 0 else 1
       continue
