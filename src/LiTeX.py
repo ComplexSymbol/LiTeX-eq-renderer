@@ -365,7 +365,9 @@ def print2dArray(arr, bh = None):
   print("--PRERENDER--")
   
 equation = r"1 / x - 1=0"
-equation = r"~ x^{2} + 3x - 5=0"
+equation = r"\e^{x} + 1=\e^{x + 1}"
+equation = r"(\frac{1 + \sqrt{2}{5}}{2})^{29}"
+equation = r"x^{\frac{1}{x}}=0.5"
 #equation = r"3 * (4 + 5\im)"
 eq = equation
 
@@ -373,9 +375,9 @@ if "=" in eq:
   indx = eq.index("=")
   eq = eq[:indx] + " - ("+eq[indx + 1:]+")"
   
-ans = str(Evaluator.Evaluate(eq, solve="x" in eq, replace=True, guess=2, SGI=True))
+ans = str(Evaluator.Evaluate(eq, solve="x" in eq, replace=True, guess=2, SGI=False))
 ans = (float(ans) if isinstance(ans, float) else
-      "{0:7f}".format(complex(ans).real).rstrip("0").rstrip(".") + ("{0:+7f}".format(complex(ans).imag).rstrip("0").rstrip(".") + r"\im" if 
+      "{0:10f}".format(complex(ans).real).rstrip("0").rstrip(".") + ("{0:+10f}".format(complex(ans).imag).rstrip("0").rstrip(".") + r"\im" if 
                                 complex(ans).imag != 0 else "")).replace("j", r"\im")
 ans = "~" + ans[1:] if ans[0] == "-" else ans
 

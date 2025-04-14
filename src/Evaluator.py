@@ -187,7 +187,7 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, SGI = False):
       progress = -1
       continue
     
-   # print(f"({opStr}) |--| {eq[progress:]}")
+    #print(f"({opStr}) |--| {eq[progress:]}")
     
     progress += 1
     if eq[progress] != opStr or eq[progress - 1] == "e":
@@ -196,6 +196,10 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, SGI = False):
     if " " in eq and curOp == 3:
       eq = eq.replace(" ", "")
       progress = -1
+      continue
+    
+    if progress == 0 and eq[0] == "-":
+      progress += 1
       continue
     
     i = 0
@@ -212,6 +216,7 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, SGI = False):
                     repl)
     #print(f"setting progress from {progress} to {progress - len(first) + len(repl) - 1}")
     progress = progress - len(first) + len(repl) - 1
+    #print(eq)
 
   ans = toFloat(eq)
   print(f"  Finished evaluating; result: {ans}")
@@ -244,6 +249,7 @@ def impMult(eq):
         (eq[i] == ")" and eq[i + 1] == "\\") or # ...4)\pi
         (eq[i] == ")" and eq[i + 1] == "(") or # ...3)(6...
         (eq[i] == ")" and eq[i + 1].isdigit()) or # ...)7
+        (eq[i] == ")" and eq[i + 1].isalpha()) or # ...)x...
         (eq[i] == "}" and eq[i + 1].isdigit())): # ...2}7
       eq = eq[:i + 1] + "*" + eq[i + 1:] # Insert multiplication
     i += 1
@@ -281,7 +287,7 @@ def toFloat(string):
   else: return float(string)
   
 inc = 0.001
-def NewtonMethod(eq, guess, accuracy, shouldGuessImag, epsilon = 0.00001, maxIter = 100):
+def NewtonMethod(eq, guess, accuracy, shouldGuessImag, alter = 1, epsilon = 0.00001, maxIter = 40):
   if shouldGuessImag:
     guess = guess + 1j
 
@@ -300,8 +306,9 @@ def NewtonMethod(eq, guess, accuracy, shouldGuessImag, epsilon = 0.00001, maxIte
     
     testGuess = (guess * derivAtGuess - funcAtGuess) / derivAtGuess
     if not shouldGuessImag and Evaluate(eq.replace("x", str(testGuess))).imag != 0:
-      print(f"Decrementing guess {guess} by 1")
-      guess += -1 if derivAtGuess.real < 0 else 1
+      doubleDerivAtGuess = (derivAtGuess - ((funcAtGuess - Evaluate(eq.replace("x", str(guess - inc - inc)))) / inc)) / inc
+      print(f"{'Decrimenting' if doubleDerivAtGuess.real < 0 else 'Incrementing'} guess {guess} by {alter}")
+      guess += -alter if doubleDerivAtGuess.real < 0 else alter
       continue
     
     guess = testGuess
