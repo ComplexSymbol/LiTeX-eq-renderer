@@ -3,7 +3,41 @@ import Evaluator as EV # type: ignore
 import SPI
 import time
 
-equation = r"x^{\frac{1}{x}}=0.5"
+print("Initializing Display...")
+SPI.initialize_display()
+time.sleep(1)
+SPI.software_reset()
+
+print("Clearing Display...")
+SPI.clear_display()
+SPI.send_command(SPI.INVR_OFF)
+
+print("Wait 2 sec...")
+time.sleep(2)
+
+eqs = [r"1",
+       r"1 + ",
+       r"1 + \e",
+       r"1 + \e^{`}",
+       r"1 + \e^{2}",
+       r"1 + \e^{2\pi}",
+       r"1 + \e^{2\pi\im}",
+       r"1 + \e^{2\pi\im} - ",
+       r"1 + \e^{2\pi\im} - 3",
+       r"1 + \e^{2\pi\im} - 3\sqrt{2}{`}",
+       r"1 + \e^{2\pi\im} - 3\sqrt{2}{\frac{`}{`}}",
+       r"1 + \e^{2\pi\im} - 3\sqrt{2}{\frac{sin(`)}{`}}",
+       r"1 + \e^{2\pi\im} - 3\sqrt{2}{\frac{sin(4)}{`}}",
+       r"1 + \e^{2\pi\im} - 3\sqrt{2}{\frac{sin(4)}{3}}",
+      ]
+
+renderEQ = None
+for eqNum in range(0, len(eqs)):
+  renderEQ = LT.genRender(eqs[eqNum])
+  print("Sending Data...")
+  SPI.send_bitmap(renderEQ, 0)
+
+equation = eqs[-1]
 eq = equation
 
 if "=" in eq:
@@ -16,28 +50,18 @@ ans = (float(ans) if isinstance(ans, float) else
             ans.imag != 0 else "")).replace("j", r"\im")
 ans = "~" + ans[1:] if ans[0] == "-" else ans
 ans = ans.replace("j", "\im")
-
-renderEQ = LT.genRender(equation)
 renderANS = LT.genRender(("x" if "x" in equation else "") + "=" + ans)
+del eq, ans, equation
 
-LT.print2dArray(renderEQ)
-LT.print2dArray(renderANS)
-
-print("Initializing Display...")
-SPI.initialize_display()
-time.sleep(1)
-SPI.software_reset()
-
-print("Clearing Display...")
-SPI.clear_display()
+#LT.print2dArray(renderEQ)
+#LT.print2dArray(renderANS)
 
 print("Sending Data...")
 SPI.send_bitmap(renderEQ, 0)
 SPI.send_bitmap(renderANS, 64 - len(renderANS))
 
-print(f"Press enter to close...")
+print("Press enter to close...")
 _ = input()
-del _
 
 print("Clearing, Software reset, and closing SPI...")
 SPI.clear_display()

@@ -51,7 +51,7 @@ rst.value = True  # Default reset state
 spi = busio.SPI(clock=SCK_PIN, MOSI=MOSI_PIN, MISO=None)
 if not spi.try_lock(): raise OSError("Failed to lock SPI bus.")
 
-spi.configure(baudrate=100_000)
+spi.configure(baudrate=500_000)
 
 # Helper functions
 def send_command(cmd):

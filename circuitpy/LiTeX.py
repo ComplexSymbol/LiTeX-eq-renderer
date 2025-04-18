@@ -90,11 +90,13 @@ def genRender(eq, exp=False):
   eq = eq.replace(" ", "")
 
   while i < len(eq):
+    # Ignore whitespace
     if eq[i] == " ":
       i += 1
       continue
     print(f"Parsing char: {eq[:i] + ' [' + eq[i] + '] ' + eq[i + 1:]} with hang {hang}")
 
+    # Trivial characters
     if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "=", ".", "~", "`"):
       #print(f" Appending digit '{eq[i]}'")
       char = readGlyph(begWth + eq[i])
@@ -109,7 +111,7 @@ def genRender(eq, exp=False):
       renderedConts = genRender(contents, exp)
       parenHeight = max(0, len(renderedConts) - (7 if exp else 10))
 
-
+      # Opening parenthesis
       render = add2dArrays(
         render,
         readGlyph(begWth + "(", -parenHeight, exp),
@@ -117,12 +119,14 @@ def genRender(eq, exp=False):
         BbarHt=lastFinishedBarHt,
       )
       barHt = max(barHt, lastFinishedBarHt)
+      # Contents
       render = add2dArrays(
         render,
         renderedConts,
         AbarHt=barHt,
         BbarHt=lastFinishedBarHt,
       )
+      # Closing parenthesis
       render = add2dArrays(
         render,
         readGlyph(begWth + ")", parenHeight, exp),
@@ -133,7 +137,6 @@ def genRender(eq, exp=False):
 
       #print(f"  setting i to {len(contents) + 1}")
       i += len(contents) + 1
-
       del contents, renderedConts, parenHeight
 
     elif eq[i] == "^" or eq[i] == "_":
@@ -154,7 +157,6 @@ def genRender(eq, exp=False):
         barHt += abs(min(barHt - len(contents), 0))
 
       i += ln + 2
-
       del isPwr, contents, ln
 
     elif eq[i] == "\\":
@@ -318,11 +320,7 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
   #print(f"Add2dArrays ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}")
 
   newArray = [[False] * (len(a[0]) + len(b[0]))] * (
-    max(
-      max(len(a), len(b)) + ((len(b) - BbarHt - 1) - (len(a) - AbarHt - 1)),
-      len(a),
-      len(b),
-    ) + add
+    max(len(a), len(b)) + add
     if overlap == -1
     else max(len(a), relHt + len(b) - overlap)
   )
@@ -345,7 +343,7 @@ def merge2dArrays(a, b, x, y):
       if not (h <= y and h > y - len(b))
       else ([False] * x) + b[h - y] + ([False] * (len(a[0]) - len(b[0]) - x))
     )
-    a[h] = [max(a[h][i], toMerge[i]) for i in range(len(toMerge))]
+    a[h] = [(a[h][i] | toMerge[i]) for i in range(len(toMerge))]
 
   return a
 
