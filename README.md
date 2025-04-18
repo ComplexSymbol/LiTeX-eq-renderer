@@ -76,3 +76,4 @@ r"1 + \e^{2\pi\im} - (3\sqrt{2}{\frac{sin(4)}{5}log_{6^{2}}(7) * 8} / 9)^{10}"
               ██████████  ████    ██████      ██████      ██████      ██████      ██████    ██████████
 --PRERENDER--
 ```
+![Screenshot 2025-04-18 at 8 51 45 AM](https://github.com/user-attachments/assets/bb581813-ec44-4efc-8a0f-ed50f9659bd7)
