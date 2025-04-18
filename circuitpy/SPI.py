@@ -1,10 +1,8 @@
 import board
 import digitalio
-import adafruit_pioasm
-import rp2pio
+import busio
 import array
 import time
-import microcontroller
 
 # Command constants:
 BIAS_SEL = 0b10100010
@@ -31,11 +29,11 @@ CLMN_ADR1 = 0b00010000
 CLMN_ADR2 = 0b00000000
 
 # Pin assignments (SPI)
-CS_PIN = board.GP9  # Chip Select  FNL: 9
-DC_PIN = board.GP11  # Data/Command FNL: 11
-RST_PIN = board.GP10  # Reset        FNL: 10
-SCK_PIN = board.GP12  # Clock        FNL: 12
-MOSI_PIN = board.GP13  # MOSI         FNL: 13
+CS_PIN = board.D10  # Chip Select   FNL: 10
+DC_PIN = board.D14  # Data/Command  FNL: 14
+RST_PIN = board.D9  # Reset         FNL: 9
+SCK_PIN = board.D13  # Clock        FNL: 13
+MOSI_PIN = board.D11  # MOSI        FNL: 11
 
 # Pin initializations (SPI)
 cs = digitalio.DigitalInOut(CS_PIN)
@@ -50,39 +48,12 @@ rst = digitalio.DigitalInOut(RST_PIN)
 rst.direction = digitalio.Direction.OUTPUT
 rst.value = True  # Default reset state
 
+spi = busio.SPI(clock=SCK_PIN, MOSI=MOSI_PIN, MISO=None)
+if not spi.try_lock(): raise OSError("Failed to lock SPI bus.")
 
-# PIO Assembly for SPI
-spi_pio_program = """
-.side_set 1  ; 1 bit for sideset (clock)
-.program spi_pio
-    out pins, 1  side 0  ; Clock low
-    nop          side 1  ; Output 1 bit, clock high
-"""
-
-
-# Compile and initialize the PIO program
-assembledSPI = adafruit_pioasm.assemble(spi_pio_program)
-
-spi = rp2pio.StateMachine(
-    program=assembledSPI,
-    frequency=0,  # 2KHz for testing on oscilloscope
-    first_out_pin=MOSI_PIN,
-    out_pin_count=1,
-    first_sideset_pin=SCK_PIN,
-    sideset_pin_count=1,
-    out_shift_right=False,
-    pull_threshold=8,  # 8 bits per SPI byte
-    auto_pull=True,
-)
+spi.configure(baudrate=100_000)
 
 # Helper functions
-def big_endian(n):
-    bitArray = [1 if digit == "1" else 0 for digit in bin(n)[2:]]
-    bitArray.reverse()
-
-    return int("".join(map(str, bitArray)), 2)
-
-
 def send_command(cmd):
     dc.value = False  # Command mode
     cs.value = False  # Select the display
@@ -126,10 +97,7 @@ def initialize_display():
 
 def software_reset():
     send_command(SFTWR_RST)
-
-    send_command(ELEC_VOL1)
-    send_command(ELEC_VOL2 | 0x28)
-
+    adjust_contrast(0x28)
     send_command(STRT_LINE | 0x00)
 
 def adjust_contrast(val):
@@ -156,37 +124,26 @@ def clear_display():
             send_data(0x00)
 
 
-def send_bitmap(bitmap, k):
+def send_bitmap(bitmap, k = 0):
     send_command(PAGE_ADDR | 0x00)
     send_command(CLMN_ADR1 | 0x00)
     send_command(CLMN_ADR2 | 0x00)
 
-    for y in range(0, len(bitmap), 8):
-        send_command(PAGE_ADDR | round((y + k) / 8))
+    for i in range(k - (8 * (k // 8))):
+        bitmap.insert(0, [0] * len(bitmap[0]))
+    k = (8 * (k // 8))
 
+    for y in range(0, len(bitmap), 8):
+        send_command(PAGE_ADDR | ((y + k) // 8))
         send_command(CLMN_ADR1 | 0x00)
-        send_command(CLMN_ADR2 | 0x03)
+        send_command(CLMN_ADR2 | 0x00)
 
         for x in range(len(bitmap[0])):
-            send_data(
-                int(
-                    "".join(
-                        map(
-                            str,
-                            reversed(
-                                [
-                                    1 if bitmap[y + 0][x] else 0,
-                                    0 if y + 1 >= len(bitmap) else (1 if bitmap[y + 1][x] else 0),
-                                    0 if y + 2 >= len(bitmap) else (1 if bitmap[y + 2][x] else 0),
-                                    0 if y + 3 >= len(bitmap) else (1 if bitmap[y + 3][x] else 0),
-                                    0 if y + 4 >= len(bitmap) else (1 if bitmap[y + 4][x] else 0),
-                                    0 if y + 5 >= len(bitmap) else (1 if bitmap[y + 5][x] else 0),
-                                    0 if y + 6 >= len(bitmap) else (1 if bitmap[y + 6][x] else 0),
-                                    0 if y + 7 >= len(bitmap) else (1 if bitmap[y + 7][x] else 0),
-                                ]
-                            ),
-                        )
-                    ),
-                    2,
-                )
-            )
+            send_data(((0b10000000 if y + 7 < len(bitmap) and bitmap[y + 7][x] else 0) |
+                       (0b01000000 if y + 6 < len(bitmap) and bitmap[y + 6][x] else 0) |
+                       (0b00100000 if y + 5 < len(bitmap) and bitmap[y + 5][x] else 0) |
+                       (0b00010000 if y + 4 < len(bitmap) and bitmap[y + 4][x] else 0) |
+                       (0b00001000 if y + 3 < len(bitmap) and bitmap[y + 3][x] else 0) |
+                       (0b00000100 if y + 2 < len(bitmap) and bitmap[y + 2][x] else 0) |
+                       (0b00000010 if y + 1 < len(bitmap) and bitmap[y + 1][x] else 0) |
+                       (0b00000001 if y + 0 < len(bitmap) and bitmap[y + 0][x] else 0)))

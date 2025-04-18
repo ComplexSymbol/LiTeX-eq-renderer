@@ -1,5 +1,7 @@
 import LiTeX as LT # type: ignore
 import Evaluator as EV # type: ignore
+import SPI
+import time
 
 equation = r"x^{\frac{1}{x}}=0.5"
 eq = equation
@@ -20,3 +22,24 @@ renderANS = LT.genRender(("x" if "x" in equation else "") + "=" + ans)
 
 LT.print2dArray(renderEQ)
 LT.print2dArray(renderANS)
+
+print("Initializing Display...")
+SPI.initialize_display()
+time.sleep(1)
+SPI.software_reset()
+
+print("Clearing Display...")
+SPI.clear_display()
+
+print("Sending Data...")
+SPI.send_bitmap(renderEQ, 0)
+SPI.send_bitmap(renderANS, 64 - len(renderANS))
+
+print(f"Press enter to close...")
+_ = input()
+del _
+
+print("Clearing, Software reset, and closing SPI...")
+SPI.clear_display()
+SPI.software_reset()
+SPI.spi.unlock()
