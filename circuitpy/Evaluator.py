@@ -25,9 +25,10 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, shouldGuessImag = F
   global trigs, operate
 
   if isFloat(eq):
+    #print(f"Single number EQ {eq}")
     return toFloat(eq)
 
-  print(printAhead + f"Standardizing eq: '{eq}'")
+  #print(printAhead + f"Standardizing eq: '{eq}'")
 
   # Standardize equation
   if replace:
@@ -65,7 +66,7 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, shouldGuessImag = F
   if solve:
     return NewtonMethod(eq, guess, 8, shouldGuessImag)
 
-  print(printAhead + f"Evaluating \'{eq}\'")
+  #print(printAhead + f"Evaluating \'{eq}\'")
 
   # P - Parenthetical function (trig)
   while any(trigs in eq for trigs in ["sin", "cos", "tan", "sec", "csc", "cot"]):
@@ -231,7 +232,7 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, shouldGuessImag = F
   except: pass
 
   ans = toFloat(eq)
-  print(printAhead + f"  Finished evaluating; result: {ans}")
+  #print(printAhead + f"  Finished evaluating; result: {ans}")
   return complex(round(complex(ans).real, 15), round(complex(ans).imag, 15)) if replace else ans
 
 def primeFactors(n):

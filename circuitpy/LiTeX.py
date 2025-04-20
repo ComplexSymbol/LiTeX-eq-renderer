@@ -2,9 +2,6 @@ import Evaluator
 import math
 #import DictGen
 
-lastFinishedBarHt = None
-logging = False
-
 glyphDict = {
   '(': 0,
   ')': 11,
@@ -79,13 +76,14 @@ glyphDict = {
   '^.': 669,
 }
 
+lastFinishedBarHt = None
 def genRender(eq, exp=False):
   global lastFinishedBarHt
   i = 0
   begWth = "" if exp == False else "^"
   lastHeight = 0
   barHt = 2 if exp else 4
-  render = [[]] * (7 if exp else 10)
+  render = [[] for _ in range(7 if exp else 10)]
   hang = 0
   eq = eq.replace(" ", "")
 
@@ -94,7 +92,7 @@ def genRender(eq, exp=False):
     if eq[i] == " ":
       i += 1
       continue
-    print(f"Parsing char: {eq[:i] + ' [' + eq[i] + '] ' + eq[i + 1:]} with hang {hang}")
+    #print(f"Parsing char: {eq[:i] + ' [' + eq[i] + '] ' + eq[i + 1:]} with hang {hang}")
 
     # Trivial characters
     if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "=", ".", "~", "`"):
@@ -197,10 +195,7 @@ def genRender(eq, exp=False):
         num = genRender(num, True)
         den = genRender(den, True)
 
-        fraction = [
-          [False] * (max(len(num[0]), len(den[0])) + 1 + (max(len(num[0]), len(den[0])) % 2))
-          for _ in range(len(num) + len(den) + 2)
-        ]
+        fraction = [[False] * (max(len(num[0]), len(den[0])) + 1 + (max(len(num[0]), len(den[0])) % 2)) for _ in range(len(num) + len(den) + 2)]
         fraction = merge2dArrays(
           fraction,
           num,
@@ -268,9 +263,9 @@ def genRender(eq, exp=False):
     else:
       break
   render.insert(0, [False] * len(render[0]))
-  print(f"Removed {max(0,count - 1)} empty overhead lines")
+  #print(f"Removed {max(0,count - 1)} empty overhead lines")
 
-  print(f"Finished parsing {eq}")
+  #print(f"Finished parsing {eq}")
   lastFinishedBarHt = barHt
   return render
 
@@ -283,7 +278,7 @@ def readGlyph(g, resParen = 0, exp = False):
     width = 6 if len(line) == 0 else int(line.rpartition("x")[0])
     height = 10 if len(line) == 0 else int(line.rpartition("x")[2])
 
-    glyph = [[False] * width] * height
+    glyph = [[False] * width for _ in range(height)]
 
     for y in range(height):
       line = [
@@ -296,11 +291,13 @@ def readGlyph(g, resParen = 0, exp = False):
     for p in range(abs(resParen)):
       glyph.insert(
         4,
-        ([False, True, False] if resParen < 0 else [False, False, True]) if exp
-        else ([False, True, False, False]
-          if resParen < 0
-          else [False, False, False, True]
-          )
+        ([False, True, False] 
+         if resParen < 0 else 
+         [False, False, True]) 
+        if exp else
+        ([False, True, False, False]
+         if resParen < 0 else
+         [False, False, False, True])
       )
 
     return glyph
@@ -319,11 +316,15 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
 
   #print(f"Add2dArrays ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}")
 
-  newArray = [[False] * (len(a[0]) + len(b[0]))] * (
-    max(len(a), len(b)) + add
+  newArray = [[False] * (len(a[0]) + len(b[0])) for _ in range(
+    max(
+      max(len(a), len(b)) + ((len(b) - BbarHt - 1) - (len(a) - AbarHt - 1)),
+      len(a),
+      len(b),
+    ) + add
     if overlap == -1
     else max(len(a), relHt + len(b) - overlap)
-  )
+  )]
   newArray = merge2dArrays(newArray, a, 0, abs(diff) if diff < 0 else 0)
   newArray = merge2dArrays(
     newArray,
@@ -334,26 +335,15 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
 
   return newArray
 
-
 def merge2dArrays(a, b, x, y):
   y = len(a) - y
-  for h in range(len(a)):
-    toMerge = (
-      [False] * len(a[0])
-      if not (h <= y and h > y - len(b))
-      else ([False] * x) + b[h - y] + ([False] * (len(a[0]) - len(b[0]) - x))
-    )
-    a[h] = [(a[h][i] | toMerge[i]) for i in range(len(toMerge))]
-
+  h = -1
+  while (h := h + 1) < len(a):
+    if h <= y and h > y - len(b): 
+      a[h][x:x + len(b[0])] = [a[h][i] | b[h - y][i - x] for i in range(x, x + len(b[0]))]
   return a
 
-
 def print2dArray(arr, bh = None):
-  if bh != None:
-    H = [[False, False]] * len(arr)
-    H[len(H) - 1 - bh] = [True, False]
-    arr = add2dArrays(H, arr)
-
   print(f"Dimensions: {len(arr[0])}x{len(arr)}")
   print("--PRERENDER--")
   for y in range(len(arr)):
