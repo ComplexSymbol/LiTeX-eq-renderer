@@ -1,5 +1,6 @@
 import Evaluator
 import math
+import prerendered
 #import DictGen
 
 glyphDict = {
@@ -75,9 +76,10 @@ glyphDict = {
   '^`': 661,
   '^.': 669,
 }
+preRenderedGlyphs = {}
 
 lastFinishedBarHt = None
-def genRender(eq, exp=False):
+def genRender(eq, exp=False, first = False):
   global lastFinishedBarHt
   i = 0
   begWth = "" if exp == False else "^"
@@ -88,15 +90,11 @@ def genRender(eq, exp=False):
   eq = eq.replace(" ", "")
 
   while i < len(eq):
-    # Ignore whitespace
-    if eq[i] == " ":
-      i += 1
-      continue
-    #print(f"Parsing char: {eq[:i] + ' [' + eq[i] + '] ' + eq[i + 1:]} with hang {hang}")
+    print(f"Parsing char: {eq[:i] + ' [' + eq[i] + '] ' + eq[i + 1:]} with hang {hang}")
 
     # Trivial characters
     if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "=", ".", "~", "`"):
-      #print(f" Appending digit '{eq[i]}'")
+      print(f" Appending digit '{eq[i]}'")
       char = readGlyph(begWth + eq[i])
       render = add2dArrays(render, char, AbarHt=barHt)
       lastHeight = len(char)
@@ -266,43 +264,34 @@ def genRender(eq, exp=False):
   #print(f"Removed {max(0,count - 1)} empty overhead lines")
 
   #print(f"Finished parsing {eq}")
-  lastFinishedBarHt = barHt
+
+  lastFinishedBarHt = None if first else barHt
   return render
 
+def readGlyph(g, resizeParenBy = 0, exponent = False):
+  try:
+    glyph = prerendered.prerenderedGlyphs[g][:] # Took 20 minutes to figure out how to deep copy by adding [:]
 
-def readGlyph(g, resParen = 0, exp = False):
-  with open("lib/glyphs.txt", "r") as glyphs:
-    glyphs = glyphs.readlines()
-    line = glyphs[glyphDict[g]].replace("\n", "").replace(g, "", 1).replace(":", "")
-
-    width = 6 if len(line) == 0 else int(line.rpartition("x")[0])
-    height = 10 if len(line) == 0 else int(line.rpartition("x")[2])
-
-    glyph = [[False] * width for _ in range(height)]
-
-    for y in range(height):
-      line = [
-        True if digit == "1" else False
-        for digit in bin(int(glyphs[glyphDict[g] + y + 1]))[2:]
-      ]
-      line = [False] * (width - len(line)) + line
-      glyph[y] = line
-
-    for p in range(abs(resParen)):
-      glyph.insert(
-        4,
-        ([False, True, False] 
-         if resParen < 0 else 
-         [False, False, True]) 
-        if exp else
-        ([False, True, False, False]
-         if resParen < 0 else
-         [False, False, False, True])
-      )
+    if resizeParenBy != 0:
+      for _ in range(abs(resizeParenBy)):
+        glyph.insert(
+          4,
+          ([False, True, False] if resizeParenBy < 0 else [False, False, True]) if exponent 
+          else 
+          ([False, True, False, False] if resizeParenBy < 0 else [False, False, False, True])
+        )
 
     return glyph
 
-  raise Exception(f"Glyph not found '{g}'")
+  except:
+    raise Exception(f"Glyph not found '{g}'")
+
+def prerenderGlyphs():
+  with open("lib/glyphs.txt", "r") as file:
+    lines = file.readlines()
+    
+    for key, value in glyphDict.items():
+      print(f"\"{key}\": {readGlyph(key)},")
 
 
 def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
@@ -314,7 +303,7 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
     BbarHt = (len(b) // 2) - 1
   diff = (AbarHt - BbarHt) if overlap == -1 else 0
 
-  #print(f"Add2dArrays ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}")
+  print(f"Add2dArrays ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}")
 
   newArray = [[False] * (len(a[0]) + len(b[0])) for _ in range(
     max(
@@ -336,11 +325,12 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
   return newArray
 
 def merge2dArrays(a, b, x, y):
-  y = len(a) - y
-  h = -1
-  while (h := h + 1) < len(a):
-    if h <= y and h > y - len(b): 
-      a[h][x:x + len(b[0])] = [a[h][i] | b[h - y][i - x] for i in range(x, x + len(b[0]))]
+  lenA = len(a)
+  y = lenA - y
+
+  for h in range(y + 1 - len(b), min(lenA, y + 1)):
+    for i in range(x, x + len(b[0])):
+      a[h][i] |= b[h - y][i - x]
   return a
 
 def print2dArray(arr, bh = None):
