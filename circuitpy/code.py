@@ -14,8 +14,9 @@ if True:
 
   #print("Wait 2 sec...")
   #time.sleep(2)
-  eqs = [r"log_{log_{2}(3)}(4)"]
-
+  eqs = [r"\frac{log_{3}(6)}{2}"]
+  #eqs = [r"l_{\frac{1}{3}}(6)"]
+  
   renderEQ = [[]]
   renderANS = [[]]
   for eqNum in range(len(eqs)):

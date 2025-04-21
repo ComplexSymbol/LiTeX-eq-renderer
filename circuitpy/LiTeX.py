@@ -96,7 +96,7 @@ def genRender(eq, exp=False, first = False):
     if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "=", ".", "~", "`"):
       print(f" Appending digit '{eq[i]}'")
       char = readGlyph(begWth + eq[i])
-      render = add2dArrays(render, char, AbarHt=barHt)
+      render = addRenders(render, char, AbarHt=barHt)
       lastHeight = len(char.bitmap)
 
       del char
@@ -108,7 +108,7 @@ def genRender(eq, exp=False, first = False):
       parenHeight = max(0, len(renderedConts.bitmap) - (7 if exp else 10))
 
       # Opening parenthesis
-      render = add2dArrays(
+      render = addRenders(
         render,
         readGlyph(begWth + "(", -parenHeight, exp),
         AbarHt=barHt,
@@ -116,14 +116,14 @@ def genRender(eq, exp=False, first = False):
       )
       barHt = max(barHt, lastFinishedBarHt)
       # Contents
-      render = add2dArrays(
+      render = addRenders(
         render,
         renderedConts,
         AbarHt=barHt,
         BbarHt=lastFinishedBarHt,
       )
       # Closing parenthesis
-      render = add2dArrays(
+      render = addRenders(
         render,
         readGlyph(begWth + ")", parenHeight, exp),
         AbarHt=barHt,
@@ -144,12 +144,13 @@ def genRender(eq, exp=False, first = False):
       contents = genRender(contents, True)
 
       if isPwr:
-        render = add2dArrays(
-          render, contents, overlap=3 if exp else 4, relHt=lastHeight
+        render = addRenders(
+          render, contents, overlap=3 if exp else 4, relHt=lastHeight + hang
         )
       else:
-        render = add2dArrays(render, contents, AbarHt=barHt, BbarHt=len(contents.bitmap) - (2 if exp else 0), add=len(contents.bitmap) - barHt)
-        barHt += max(0, len(contents.bitmap) - barHt)
+        render = addRenders(render, contents, AbarHt=barHt, BbarHt=len(contents.bitmap), add=len(contents.bitmap) - barHt - (2 if exp else 0))
+        barHt += max(0, len(contents.bitmap) - barHt) - (2 if exp else 0)
+        hang += len(contents.bitmap) - 4
 
       i += ln + 2
       del isPwr, contents, ln
@@ -175,8 +176,8 @@ def genRender(eq, exp=False, first = False):
 
         # Generate render for character, then append it to the render and increment i
         char = readGlyph(begWth + specials[tries.index(True)])
-        render = add2dArrays(render, char, AbarHt = barHt)
-        lastHeight = len(char)
+        render = addRenders(render, char, AbarHt = barHt)
+        lastHeight = len(char.bitmap)
         i += len(specials[tries.index(True)])
 
         del specials, tries, char
@@ -192,30 +193,32 @@ def genRender(eq, exp=False, first = False):
         num = genRender(num, True)
         den = genRender(den, True)
 
-        fraction = [[False] * (max(len(num[0]), len(den[0])) + 1 + (max(len(num[0]), len(den[0])) % 2)) for _ in range(len(num) + len(den) + 2)]
-        fraction = merge2dArrays(
+        #fraction = [[False] * (max(num.width, num.width) + 1 + (max(num.width, den.width) % 2)) for _ in range(len(num.bitmap) + len(den.bitmap) + 2)]
+        fraction = Render(max(num.width, num.width) + 4 + (max(num.width, den.width) % 2), 
+                          [0 for _ in range(len(num.bitmap) + len(den.bitmap) + 2)])
+        fraction = mergeRenders(
           fraction,
           num,
-          (len(fraction[0]) // 2) - (len(num[0]) // 2),
-          len(den) + 2,
+          (fraction.width // 2) - (num.width // 2),
+          len(den.bitmap) + 2,
         )
-        fraction = merge2dArrays(
+        fraction = mergeRenders(
           fraction,
           den,
-          (len(fraction[0]) // 2) - (len(den[0]) // 2),
+          (fraction.width // 2) - (den.width // 2),
           0,
         )
-        fraction = merge2dArrays(
+        fraction = mergeRenders(
           fraction,
-          [[True] * (len(fraction[0]) - 1)],
+          Render(fraction.width - 1, [(0b1 << fraction.width - 1) - 1]),
           1,
-          len(den) + 1,
+          len(den.bitmap) + 1,
         )
-        render = add2dArrays(
-          render, fraction, AbarHt=barHt, BbarHt=len(den)
+        barHt = max(barHt, len(den.bitmap)) + hang
+        render = addRenders(
+          render, fraction, AbarHt=barHt, BbarHt=len(den.bitmap)
         )
-        barHt = max(barHt, len(den)) + hang
-        lastHeight = len(fraction) + hang
+        lastHeight = len(fraction.bitmap) + hang
 
         del num, den, fraction
 
@@ -238,7 +241,7 @@ def genRender(eq, exp=False, first = False):
         radical = merge2dArrays(radical, [[True] * (len(radicand[0]) + 3)], len(n[0]) + 2, len(radicand) + 1)
         radical = merge2dArrays(radical, [[True], [True]], len(radicand[0]) + len(n[0]) + 4, len(radicand) - 1)
 
-        render = add2dArrays(render, radical, AbarHt = barHt, BbarHt = lastFinishedBarHt)
+        render = addRenders(render, radical, AbarHt = barHt, BbarHt = lastFinishedBarHt)
         barHt = max(barHt, lastFinishedBarHt) + hang
         lastHeight = len(radical) + hang
 
@@ -282,7 +285,7 @@ def readGlyph(g, resizeParenBy = 0, exponent = False):
     raise Exception(f"Glyph not found '{g}'")
 
 class Render:
-  def __init__(self, w, bmap = None,convert = False):
+  def __init__(self, w, bmap = None, convert = False):
     if convert:
       newBmap = []
       for row in bmap:
@@ -369,7 +372,7 @@ def mergeRenders(a, b, x, y):
 
   return a
 
-def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
+def addRenders(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
   #print("a: ")
   #testPrint(a, True)
   #print("b: ")
@@ -383,7 +386,7 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
     BbarHt = (len(b.bitmap) // 2) - 1
   diff = (AbarHt - BbarHt) if overlap == -1 else 0
 
-  print(f"Add2dArrays ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}")
+  print(f"addRenders ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}")
 
   # IF NOT OVERLAP: 
   #   height of a 
