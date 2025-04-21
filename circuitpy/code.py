@@ -15,7 +15,7 @@ if True:
 
   #print("Wait 2 sec...")
   #time.sleep(2)
-  eqs = [r"12"]
+  eqs = [r"log_{2}(12^{2})"]
 
   renderEQ = [[]]
   renderANS = [[]]
@@ -35,7 +35,7 @@ if True:
                   ans.imag != 0 else "")).replace("j", r"\im")
       ans = "~" + ans[1:] if ans[0] == "-" else ans
       ans = ans.replace("j", "\im")
-      renderANS = LT.genRender(("x" if "x" in equation else "") + "=" + ans, first=True)
+      #renderANS = LT.genRender(("x" if "x" in equation else "") + "=" + ans, first=True)
     except:
       renderANS = [[]]
 
@@ -47,8 +47,7 @@ if True:
     #time.sleep(0.3)
 
   LT.testPrint(renderEQ, True)
-  if isinstance(renderANS, LT.Render):
-    LT.testPrint(renderANS, True)
+  #LT.testPrint(renderANS, True)
 
   #print("Press enter to close...")
   #_ = input()

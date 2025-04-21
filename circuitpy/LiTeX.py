@@ -105,7 +105,7 @@ def genRender(eq, exp=False, first = False):
       #print(f" Found parenthesis")
       contents = Evaluator.Between(eq[i:], "(", ")")
       renderedConts = genRender(contents, exp)
-      parenHeight = max(0, len(renderedConts) - (7 if exp else 10))
+      parenHeight = max(0, len(renderedConts.bitmap) - (7 if exp else 10))
 
       # Opening parenthesis
       render = add2dArrays(
@@ -143,14 +143,13 @@ def genRender(eq, exp=False, first = False):
       ln = len(contents)
       contents = genRender(contents, True)
 
-      #print(f"LastHeight: {lastHeight}")
       if isPwr:
         render = add2dArrays(
           render, contents, overlap=3 if exp else 4, relHt=lastHeight
         )
       else:
-        render = add2dArrays(render, contents, AbarHt=barHt, BbarHt=len(contents) - (2 if exp else 0), add = len(contents) - barHt)
-        barHt += abs(min(barHt - len(contents), 0))
+        render = add2dArrays(render, contents, AbarHt=barHt, BbarHt=len(contents.bitmap) - (2 if exp else 0), add=len(contents.bitmap) - barHt)
+        barHt += max(barHt - len(contents.bitmap), 0)
 
       i += ln + 2
       del isPwr, contents, ln
@@ -273,14 +272,9 @@ def readGlyph(g, resizeParenBy = 0, exponent = False):
     glyph = prerendered.prerenderedGlyphs[g] 
     glyph = Render(glyph[0], glyph[1]) # See prerendered.py {Tuple: (w, bmap)}
 
-    #if resizeParenBy != 0:
-    #  for _ in range(abs(resizeParenBy)):
-    #    glyph.insert(
-    #      4,
-    #      ([False, True, False] if resizeParenBy < 0 else [False, False, True]) if exponent 
-    #      else 
-    #      ([False, True, False, False] if resizeParenBy < 0 else [False, False, False, True])
-    #    )
+    if resizeParenBy != 0:
+      for _ in range(abs(resizeParenBy)):
+        glyph.bitmap.insert(4, (2 if exponent else 4) if resizeParenBy < 0 else 1)
 
     print(f"Successfully retrieved prerendered glyph '{g}': ", end="")
     testPrint(glyph)
@@ -320,21 +314,10 @@ def testPrint(render, prettyPrint=False):
 
 
 def mergeRenders(a, b, x, y):
-  print("    MERGING")
-  testPrint(a)
-  print("    AND")
-  testPrint(b)
+  #y = len(a.bitmap) - y
 
-  y = len(a.bitmap) - y
-
-  for h in range(y - len(b.bitmap), min(len(b.bitmap), y + 1)):
-    b.bitmap[h] >>= x
-    b.bitmap[h] &= ((1 << b.width) - 1) >> x
-        
-    a.bitmap[h] |= b.bitmap[h]
-  
-  print("    RESULT:")
-  testPrint(a)
+  for h in range(y + 1 - len(b.bitmap), min(len(b.bitmap), y + 1)):
+    a.bitmap[h] = (a.bitmap[h] | b.bitmap[h]) << (a.width - x - b.width)
 
   return a
 
@@ -382,10 +365,10 @@ def prerenderGlyphs():
     print(f"\"{key}\": ({width}, {Render(width, glyph, True).bitmap}),")
 
 def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
-  print("a: ", end="")
-  testPrint(a)
-  print("b: ", end="")
-  testPrint(b)
+  print("a: ")
+  testPrint(a, True)
+  print("b: ")
+  testPrint(b, True)
 
   if relHt == -1:
     relHt = len(a.bitmap)
@@ -404,19 +387,10 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
               #   PLUS add
               # ELSE:
               # MAX(height of a, relative height PLUS height of b MINUS overlap)
-  newHeight = (len(a.bitmap) + max((AbarHt - len(a.bitmap)) - (BbarHt - len(b.bitmap)), 0) + max(BbarHt - AbarHt, 0) + add
+  newHeight = ((len(a.bitmap) + max((AbarHt - len(a.bitmap)) - (BbarHt - len(b.bitmap)), 0) + max(-diff, 0) + add)
                 if overlap == -1
                 else max(len(a.bitmap), relHt + len(b.bitmap) - overlap)
               )
-  #newArray = [[False] * (a.width + b.width) for _ in range(
-  #  max(
-  #    max(len(a.bitmap), len(b.bitmap)) + ((len(b.bitmap) - BbarHt - 1) - (len(a.bitmap) - AbarHt - 1)),
-  #    len(a.bitmap),
-  #    len(b.bitmap),
-  #  ) + add
-  #  if overlap == -1
-  #  else max(len(a.bitmap), relHt + len(b.bitmap) - overlap)
-  #)]
   newArray = Render(a.width + b.width, [0 for _ in range(newHeight)])
   newArray = mergeRenders(newArray, a, 0, abs(diff) if diff < 0 else 0)
   newArray = mergeRenders(
@@ -425,6 +399,9 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
     a.width,
     (diff if diff > 0 else 0) if overlap == -1 else (relHt - overlap),
   )
+
+  print("result of add: ")
+  testPrint(newArray, True)
 
   return newArray
 
