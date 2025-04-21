@@ -4,41 +4,18 @@ import SPI
 import time
 
 if True:
-  print("Initializing Display...")
-  SPI.initialize_display()
-  time.sleep(1)
-  SPI.software_reset()
+  #print("Initializing Display...")
+  #SPI.initialize_display()
+  #time.sleep(1)
+  #SPI.software_reset()
 
-  print("Clearing Display...")
-  SPI.clear_display()
-  SPI.send_command(SPI.INVR_OFF)
+  #print("Clearing Display...")
+  #SPI.clear_display()
+  #SPI.send_command(SPI.INVR_OFF)
 
-  print("Wait 2 sec...")
-  time.sleep(2)
-
-  eqs = [r"\frac{`}{`}",
-        r"\frac{`}{0}",
-        r"\frac{`}{0.}",
-        r"\frac{`}{0.8}",
-        r"\frac{log_{`}(`)}{0.8}",
-        r"\frac{log_{3}(`)}{0.8}",
-        r"\frac{log_{3}(1)}{0.8}",
-        r"\frac{log_{3}(1 + )}{0.8}",
-        r"\frac{log_{3}(1 + \e)}{0.8}",
-        r"\frac{log_{3}(1 + \e^{`})}{0.8}",
-        r"\frac{log_{3}(1 + \e^{2})}{0.8}",
-        r"\frac{log_{3}(1 + \e^{2\pi})}{0.8}",
-        r"\frac{log_{3}(1 + \e^{2\pi\im})}{0.8}",
-        r"\frac{log_{3}(1 + \e^{2\pi\im} - )}{0.8}",
-        r"\frac{log_{3}(1 + \e^{2\pi\im} - 3)}{0.8}",
-        r"\frac{log_{3}(1 + \e^{2\pi\im} - 3\sqrt{2}{`})}{0.8}",
-        r"\frac{log_{3}(1 + \e^{2\pi\im} - 3\sqrt{2}{\frac{`}{`}})}{0.8}",
-        r"\frac{log_{3}(1 + \e^{2\pi\im} - 3\sqrt{2}{\frac{sin(`)}{`}})}{0.8}",
-        r"\frac{log_{3}(1 + \e^{2\pi\im} - 3\sqrt{2}{\frac{sin(4)}{`}})}{0.8}",
-        r"\frac{log_{3}(1 + \e^{2\pi\im} - 3\sqrt{2}{\frac{sin(4)}{3}})}{0.8}",
-        ]
-
-  eqs = [r"\frac{log_{3}(1 + \e^{2\pi\im} - 3\sqrt{2}{\frac{sin(4)}{3}})}{0.8}"]
+  #print("Wait 2 sec...")
+  #time.sleep(2)
+  eqs = [r"12"]
 
   renderEQ = [[]]
   renderANS = [[]]
@@ -62,17 +39,21 @@ if True:
     except:
       renderANS = [[]]
 
-    print("Sending Data...")
-    SPI.send_bitmap(renderEQ, 0)
-    SPI.send_bitmap([[False] * 128] * 10, 54)
-    if renderANS != [[]]: SPI.send_bitmap(renderANS, 64 - len(renderANS))
+    #print("Sending Data...")
+    #SPI.send_bitmap(renderEQ, 0)
+    #SPI.send_bitmap([[False] * 128] * 10, 54)
+    #if renderANS != [[]]: SPI.send_bitmap(renderANS, 64 - len(renderANS))
     
     #time.sleep(0.3)
 
-  print("Press enter to close...")
-  _ = input()
+  LT.testPrint(renderEQ, True)
+  if isinstance(renderANS, LT.Render):
+    LT.testPrint(renderANS, True)
 
-  print("Clearing, Software reset, and closing SPI...")
-  SPI.clear_display()
-  SPI.software_reset()
-  SPI.spi.unlock()
+  #print("Press enter to close...")
+  #_ = input()
+
+  #print("Clearing, Software reset, and closing SPI...")
+  #SPI.clear_display()
+  #SPI.software_reset()
+  #SPI.spi.unlock()

@@ -85,7 +85,7 @@ def genRender(eq, exp=False, first = False):
   begWth = "" if exp == False else "^"
   lastHeight = 0
   barHt = 2 if exp else 4
-  render = [[] for _ in range(7 if exp else 10)]
+  render = Render(0, [])
   hang = 0
   eq = eq.replace(" ", "")
 
@@ -97,7 +97,7 @@ def genRender(eq, exp=False, first = False):
       print(f" Appending digit '{eq[i]}'")
       char = readGlyph(begWth + eq[i])
       render = add2dArrays(render, char, AbarHt=barHt)
-      lastHeight = len(char)
+      lastHeight = len(char.bitmap)
 
       del char
 
@@ -182,7 +182,7 @@ def genRender(eq, exp=False, first = False):
 
         del specials, tries, char
 
-      # Since it's not an escape character, it must be a function
+      # Found fraction!
       elif esc == "frac":
         # Numerator & Denominator for fraction.
         num = Evaluator.Between(eq[i:], "{", "}")
@@ -255,13 +255,13 @@ def genRender(eq, exp=False, first = False):
   #print("Removing overhead...")
   count = 0
   while True:
-    if all(not p for p in render[0]):
-      del render[0]
+    if render.bitmap[0] == 0:
+      del render.bitmap[0]
       count += 1
-    else:
-      break
-  render.insert(0, [False] * len(render[0]))
-  #print(f"Removed {max(0,count - 1)} empty overhead lines")
+      continue
+    break
+  render.bitmap.insert(0, 0)
+  print(f"Removed {max(0,count - 1)} empty overhead lines")
 
   #print(f"Finished parsing {eq}")
 
@@ -270,31 +270,165 @@ def genRender(eq, exp=False, first = False):
 
 def readGlyph(g, resizeParenBy = 0, exponent = False):
   try:
-    glyph = prerendered.prerenderedGlyphs[g][:] # Took 20 minutes to figure out how to deep copy by adding [:]
+    glyph = prerendered.prerenderedGlyphs[g] 
+    glyph = Render(glyph[0], glyph[1]) # See prerendered.py {Tuple: (w, bmap)}
 
-    if resizeParenBy != 0:
-      for _ in range(abs(resizeParenBy)):
-        glyph.insert(
-          4,
-          ([False, True, False] if resizeParenBy < 0 else [False, False, True]) if exponent 
-          else 
-          ([False, True, False, False] if resizeParenBy < 0 else [False, False, False, True])
-        )
+    #if resizeParenBy != 0:
+    #  for _ in range(abs(resizeParenBy)):
+    #    glyph.insert(
+    #      4,
+    #      ([False, True, False] if resizeParenBy < 0 else [False, False, True]) if exponent 
+    #      else 
+    #      ([False, True, False, False] if resizeParenBy < 0 else [False, False, False, True])
+    #    )
+
+    print(f"Successfully retrieved prerendered glyph '{g}': ", end="")
+    testPrint(glyph)
+    return glyph
+
+  except KeyError:
+    raise Exception(f"Glyph not found '{g}'")
+
+class Render:
+  def __init__(self, w, bmap = None,convert = False):
+    if convert:
+      newBmap = []
+      for row in bmap:
+        rowInt = 0
+        for bit in row:
+          rowInt = (rowInt << 1) | (bit & 0b1)
+        newBmap.append(rowInt)
+      
+      bmap = newBmap
+
+    self.bitmap = bmap or []
+    self.width = w
+    
+def testPrint(render, prettyPrint=False):
+  if not isinstance(render, Render):
+    raise TypeError(f"render ({render}) is not of type Render and cannot be testPrinted")
+
+  if prettyPrint:
+    for i, row in enumerate(render.bitmap):
+      print(('0' * (render.width - max(1, row.bit_length())) + f"{row:b}").replace("1", "██").replace("0", "[]"))
+
+  else:
+    print("[", end="")
+    for i, row in enumerate(render.bitmap):
+      print("0b" + ('0' * (render.width - max(1, row.bit_length())) + f"{row:b}"), end="," if i < len(render.bitmap) - 1 else "")
+    print("]")
+
+
+def mergeRenders(a, b, x, y):
+  print("    MERGING")
+  testPrint(a)
+  print("    AND")
+  testPrint(b)
+
+  y = len(a.bitmap) - y
+
+  for h in range(y - len(b.bitmap), min(len(b.bitmap), y + 1)):
+    b.bitmap[h] >>= x
+    b.bitmap[h] &= ((1 << b.width) - 1) >> x
+        
+    a.bitmap[h] |= b.bitmap[h]
+  
+  print("    RESULT:")
+  testPrint(a)
+
+  return a
+
+def readGlyphForPrerender(g):
+  with open("lib/glyphs.txt", "r") as glyphs:
+    glyphs = glyphs.readlines()
+    line = glyphs[glyphDict[g]].replace("\n", "").replace(g, "", 1).replace(":", "")
+
+    width = 6 if len(line) == 0 else int(line.rpartition("x")[0])
+    height = 10 if len(line) == 0 else int(line.rpartition("x")[2])
+    
+    glyph = [[False] * width] * height
+
+    for y in range(height):
+      line = [
+        True if digit == "1" else False
+        for digit in bin(int(glyphs[glyphDict[g] + y + 1]))[2:]
+      ]
+      line = [False] * (width - len(line)) + line
+      glyph[y] = line
 
     return glyph
 
-  except:
-    raise Exception(f"Glyph not found '{g}'")
+  raise Exception(f"Glyph not found '{g}'")
 
 def prerenderGlyphs():
-  with open("lib/glyphs.txt", "r") as file:
-    lines = file.readlines()
-    
-    for key, value in glyphDict.items():
-      print(f"\"{key}\": {readGlyph(key)},")
+  for key, value in glyphDict.items():
+    with open("lib/glyphs.txt", "r") as glyphs:
+      glyphs = glyphs.readlines()
+      line = glyphs[value].replace("\n", "").replace(key, "", 1).replace(":", "")
 
+      width = 6 if len(line) == 0 else int(line.rpartition("x")[0])
+      height = 10 if len(line) == 0 else int(line.rpartition("x")[2])
+      
+      glyph = [[False] * width] * height
+
+      for y in range(height):
+        line = [
+          True if digit == "1" else False
+          for digit in bin(int(glyphs[value + y + 1]))[2:]
+        ]
+        line = [False] * (width - len(line)) + line
+        glyph[y] = line
+
+    print(f"\"{key}\": ({width}, {Render(width, glyph, True).bitmap}),")
 
 def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
+  print("a: ", end="")
+  testPrint(a)
+  print("b: ", end="")
+  testPrint(b)
+
+  if relHt == -1:
+    relHt = len(a.bitmap)
+  if AbarHt == -1:
+    AbarHt = (len(a.bitmap) // 2) - 1
+  if BbarHt == -1:
+    BbarHt = (len(b.bitmap) // 2) - 1
+  diff = (AbarHt - BbarHt) if overlap == -1 else 0
+
+  print(f"Add2dArrays ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}")
+
+              # IF NOT OVERLAP: 
+              #   height of a 
+              #   PLUS how much taller b's contents are when barHt is aligned 
+              #   PLUS how much lower b's contents are when barHt is aligned 
+              #   PLUS add
+              # ELSE:
+              # MAX(height of a, relative height PLUS height of b MINUS overlap)
+  newHeight = (len(a.bitmap) + max((AbarHt - len(a.bitmap)) - (BbarHt - len(b.bitmap)), 0) + max(BbarHt - AbarHt, 0) + add
+                if overlap == -1
+                else max(len(a.bitmap), relHt + len(b.bitmap) - overlap)
+              )
+  #newArray = [[False] * (a.width + b.width) for _ in range(
+  #  max(
+  #    max(len(a.bitmap), len(b.bitmap)) + ((len(b.bitmap) - BbarHt - 1) - (len(a.bitmap) - AbarHt - 1)),
+  #    len(a.bitmap),
+  #    len(b.bitmap),
+  #  ) + add
+  #  if overlap == -1
+  #  else max(len(a.bitmap), relHt + len(b.bitmap) - overlap)
+  #)]
+  newArray = Render(a.width + b.width, [0 for _ in range(newHeight)])
+  newArray = mergeRenders(newArray, a, 0, abs(diff) if diff < 0 else 0)
+  newArray = mergeRenders(
+    newArray,
+    b,
+    a.width,
+    (diff if diff > 0 else 0) if overlap == -1 else (relHt - overlap),
+  )
+
+  return newArray
+
+"""def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
   if relHt == -1:
     relHt = len(a)
   if AbarHt == -1:
@@ -322,24 +456,4 @@ def add2dArrays(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
     (diff if diff > 0 else 0) if overlap == -1 else (relHt - overlap),
   )
 
-  return newArray
-
-def merge2dArrays(a, b, x, y):
-  lenA = len(a)
-  y = lenA - y
-
-  for h in range(y + 1 - len(b), min(lenA, y + 1)):
-    for i in range(x, x + len(b[0])):
-      a[h][i] |= b[h - y][i - x]
-  return a
-
-def print2dArray(arr, bh = None):
-  print(f"Dimensions: {len(arr[0])}x{len(arr)}")
-  print("--PRERENDER--")
-  for y in range(len(arr)):
-    for x in range(len(arr[0])):
-      print("██" if arr[y][x] else "  ", end="")
-    print()
-  print("--PRERENDER--")
-
-
+  return newArray"""
