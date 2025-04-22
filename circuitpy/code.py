@@ -14,8 +14,9 @@ if True:
 
   #print("Wait 2 sec...")
   #time.sleep(2)
-  eqs = [r"\frac{log_{\frac{1}{2}}(1 + \e^{2\pi\im} - 3\sqrt{2}{\frac{sin(4)}{3}})}{2}"]
-  eqs = [r"\frac{log_{1/2}(1)}{2}"]
+  eqs = [
+         r"log_{(\frac{\frac{1}{log_{2}(3)}}{\e\imsin(\pisin(3))})}(2)"
+        ]
   
   renderEQ = None
   renderANS = None

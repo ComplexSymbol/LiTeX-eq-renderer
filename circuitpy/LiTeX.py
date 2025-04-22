@@ -195,7 +195,7 @@ def genRender(eq, exp=False, first = False):
         den = genRender(den, True)
         denLen = len(den.bitmap)
 
-        fraction = Render(max(num.width, num.width) + 4 + (max(num.width, den.width) % 2), 
+        fraction = Render(max(num.width, den.width) + 2,
                           [0 for _ in range(len(num.bitmap) + denLen + 2)])
         fraction = mergeRenders(
           fraction,
@@ -276,8 +276,12 @@ def genRender(eq, exp=False, first = False):
 
 def readGlyph(g, resizeParenBy = 0, exponent = False):
   try:
-    glyph = prerendered.prerenderedGlyphs[g] 
-    glyph = Render(glyph[0], glyph[1]) # See prerendered.py {Tuple: (w, bmap)}
+    if exponent and abs(resizeParenBy) > 10:
+      exponent = False
+      g = g[1:]
+      
+    glyph = prerendered.prerenderedGlyphs[g]
+    glyph = Render(glyph[0], glyph[1][:]) # See prerendered.py {Tuple: (w, bmap)}
 
     if resizeParenBy != 0:
       for _ in range(abs(resizeParenBy)):
@@ -322,7 +326,7 @@ def mergeRenders(a, b, x, y):
   y = len(a.bitmap) - y
   
   for h in range(y + 1 - len(b.bitmap), min(len(a.bitmap), y + 1)):
-    a.bitmap[h] |= b.bitmap[h - y] << (a.width - x - b.width)
+    a.bitmap[h] |= b.bitmap[h - y] << max(0, a.width - x - b.width)
 
   return a
 
