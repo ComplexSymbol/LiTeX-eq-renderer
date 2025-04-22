@@ -100,19 +100,25 @@ def genRender(eq, exp=False, first = False):
 
       del char
 
-    elif eq[i] == "(":
+    elif eq[i] == "(" or eq[i] == "|":
       #print(f" Found parenthesis")
-      contents = Evaluator.Between(eq[i:], "(", ")")
+      pair = ("(", ")") if eq[i] == "(" else ("|", "|")
+      contents = Evaluator.Between(eq[i:], pair[0], pair[1])
       renderedConts = genRender(contents, exp)
       parenHeight = max(0, len(renderedConts.bitmap) - (7 if exp else 10))
 
       # Opening parenthesis
       render = addRenders(
         render,
-        readGlyph(begWth + "(", -parenHeight, exp),
+        readGlyph(begWth + pair[0], -parenHeight, exp, pair[0] == "|"),
         AbarHt=barHt,
         BbarHt=lastFinishedBarHt,
       )
+      if pair[0] == "|":
+        for h in range(len(render.bitmap)):
+          render.bitmap[h] >>= 1
+        render.width -= 1
+      
       barHt = max(barHt, lastFinishedBarHt)
       # Contents
       render = addRenders(
@@ -124,7 +130,7 @@ def genRender(eq, exp=False, first = False):
       # Closing parenthesis
       render = addRenders(
         render,
-        readGlyph(begWth + ")", parenHeight, exp),
+        readGlyph(begWth + pair[1], parenHeight, exp, pair[0] == "|"),
         AbarHt=barHt,
         BbarHt=lastFinishedBarHt,
       )
@@ -132,7 +138,7 @@ def genRender(eq, exp=False, first = False):
 
       #print(f"  setting i to {len(contents) + 1}")
       i += len(contents) + 1
-      del contents, renderedConts, parenHeight
+      del contents, renderedConts, parenHeight, pair
 
     elif eq[i] == "^" or eq[i] == "_":
       isPwr = eq[i] == "^"
@@ -274,7 +280,7 @@ def genRender(eq, exp=False, first = False):
   lastFinishedBarHt = None if first else barHt
   return render
 
-def readGlyph(g, resizeParenBy = 0, exponent = False):
+def readGlyph(g, resizeParenBy = 0, exponent = False, absVal = False):
   try:
     if exponent and abs(resizeParenBy) > 10:
       exponent = False
@@ -285,7 +291,7 @@ def readGlyph(g, resizeParenBy = 0, exponent = False):
 
     if resizeParenBy != 0:
       for _ in range(abs(resizeParenBy)):
-        glyph.bitmap.insert(4, (2 if exponent else 4) if resizeParenBy < 0 else 1)
+        glyph.bitmap.insert(4, 2 if absVal else ((2 if exponent else 4) if resizeParenBy < 0 else 1))
 
     return glyph
 

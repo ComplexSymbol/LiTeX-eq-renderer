@@ -102,7 +102,19 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, shouldGuessImag = F
       eq = eq[:eq.index("(" + contents) - 1] + eq[eq.index("(" + contents):]
 
     eq = eq.replace(f"({contents})", 
-                    str(sign * Evaluate(contents)).replace("(", "").replace(")", ""), 1)
+                    str(sign * Evaluate(contents)).replace("(", "").replace(")", ""))
+
+  while "|" in eq:
+    contents = Between(eq, "|", "|")
+    print(contents)
+    
+    sign = 1
+    if eq[eq.index("|" + contents) - 1] == "-":
+      sign = -1
+      eq = eq[:eq.index("|" + contents) - 1] + eq[eq.index("|" + contents):]
+    
+    eq = eq.replace(f"|{contents}|",
+                    str(sign * abs(Evaluate(contents))))
 
   # E - Exponents
   while "^" in eq:
@@ -257,9 +269,15 @@ def impMult(eq):
 
 # Finds string subset between char1 and char2, with nesting support
 def Between(string, char1, char2):
-  for i in range(len(string)):
-    if string[i] == char2 and (string[:i].count(char1) == string[:i + 1].count(char2)):
-      return string[string.index(char1) + 1 : i]
+  if not char1 == char2:
+    for i in range(len(string)):
+      if string[i] == char2 and (string[:i].count(char1) == string[:i + 1].count(char2)):
+        return string[string.index(char1) + 1 : i]
+  
+  else:
+    for i in range(1, len(string) + 1):
+      if string[:i].count(char1) % 2 == 0:
+        return string[string.index(char1) + 1 : i - 1]
   
   raise ValueError(f"Unable to find contents between {char1} and {char2}")
 
