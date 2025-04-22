@@ -148,12 +148,14 @@ def genRender(eq, exp=False, first = False):
           render, contents, overlap=3 if exp else 4, relHt=lastHeight + hang
         )
       else:
-        render = addRenders(render, contents, AbarHt=barHt, BbarHt=len(contents.bitmap), add=len(contents.bitmap) - barHt - (2 if exp else 0))
-        barHt += max(0, len(contents.bitmap) - barHt) - (2 if exp else 0)
-        hang += len(contents.bitmap) - 4
+        contentLen = len(contents.bitmap)
+        render = addRenders(render, contents, AbarHt=barHt, BbarHt=contentLen, add=contentLen - barHt - (2 if exp else 0))
+        barHt += max(0, contentLen) - barHt - (2 if exp else 0)
+        hang += contentLen - 4
+        del contentLen
 
       i += ln + 2
-      del isPwr, contents, ln
+      del isPwr, contents,
 
     elif eq[i] == "\\":
       #print("Found escape sequence")
@@ -192,15 +194,15 @@ def genRender(eq, exp=False, first = False):
 
         num = genRender(num, True)
         den = genRender(den, True)
+        denLen = len(den.bitmap)
 
-        #fraction = [[False] * (max(num.width, num.width) + 1 + (max(num.width, den.width) % 2)) for _ in range(len(num.bitmap) + len(den.bitmap) + 2)]
         fraction = Render(max(num.width, num.width) + 4 + (max(num.width, den.width) % 2), 
-                          [0 for _ in range(len(num.bitmap) + len(den.bitmap) + 2)])
+                          [0 for _ in range(len(num.bitmap) + denLen + 2)])
         fraction = mergeRenders(
           fraction,
           num,
           (fraction.width // 2) - (num.width // 2),
-          len(den.bitmap) + 2,
+          denLen + 2,
         )
         fraction = mergeRenders(
           fraction,
@@ -212,15 +214,15 @@ def genRender(eq, exp=False, first = False):
           fraction,
           Render(fraction.width - 1, [(0b1 << fraction.width - 1) - 1]),
           1,
-          len(den.bitmap) + 1,
+          denLen + 1,
         )
-        barHt = max(barHt, len(den.bitmap)) + hang
+        barHt = max(barHt, denLen) + hang
         render = addRenders(
-          render, fraction, AbarHt=barHt, BbarHt=len(den.bitmap)
+          render, fraction, AbarHt=barHt, BbarHt=denLen
         )
         lastHeight = len(fraction.bitmap) + hang
 
-        del num, den, fraction
+        del num, den, fraction, denLen
 
       elif esc == "sqrt":
         # Nth root
@@ -230,18 +232,19 @@ def genRender(eq, exp=False, first = False):
 
         n = genRender(n, True) if n != "2" else Render(2, [0])
         radicand = genRender(radicand, exp)
+        radicandHeight = len(radicand.bitmap)
         stem = Render(2, [0b00] + 
-                        ([0b01] * ((len(radicand.bitmap) + 1) // 2)) + 
-                        ([0b10] * ((len(radicand.bitmap) - (len(radicand.bitmap) + 1) // 2) - 4))
+                        ([0b01] * ((radicandHeight + 1) // 2)) + 
+                        ([0b10] * ((radicandHeight - (radicandHeight + 1) // 2) - 4))
                      )
 
-        radical = Render(radicand.width + n.width + 5, [0 for _ in range(2 + len(radicand.bitmap) + max(0, len(n.bitmap) + 2 - len(radicand.bitmap)))])
+        radical = Render(radicand.width + n.width + 5, [0 for _ in range(2 + radicandHeight + max(0, len(n.bitmap) + 2 - radicandHeight))])
         radical = mergeRenders(radical, n, 0, 4)
         radical = mergeRenders(radical, readGlyph("rad"), n.width - 2, 0)
         radical = mergeRenders(radical, stem, n.width + 1, 4)
         radical = mergeRenders(radical, radicand, n.width + 3, 0)
-        radical = mergeRenders(radical, Render(radicand.width + 3, [(0b1 << (radicand.width + 3)) - 1]), n.width + 2, len(radicand.bitmap) + 1)
-        radical = mergeRenders(radical, Render(1, [0b1, 0b1]), radicand.width + n.width + 4, len(radicand.bitmap) - 1)
+        radical = mergeRenders(radical, Render(radicand.width + 3, [(0b1 << (radicand.width + 3)) - 1]), n.width + 2, radicandHeight + 1)
+        radical = mergeRenders(radical, Render(1, [0b1, 0b1]), radicand.width + n.width + 4, radicandHeight - 1)
 
         render = addRenders(render, radical, AbarHt = barHt, BbarHt = lastFinishedBarHt)
         barHt = max(barHt, lastFinishedBarHt) + hang
@@ -375,17 +378,19 @@ def mergeRenders(a, b, x, y):
   return a
 
 def addRenders(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
-  print("a: ")
-  testPrint(a, True)
-  print("b: ")
-  testPrint(b, True)
+  #print("a: ")
+  #testPrint(a)
+  #print("b: ")
+  #testPrint(b)
 
+  heightA = len(a.bitmap)
+  heightB = len(b.bitmap)
   if relHt == -1:
-    relHt = len(a.bitmap)
+    relHt = heightA
   if AbarHt == -1:
-    AbarHt = (len(a.bitmap) // 2) - 1
+    AbarHt = (heightA // 2) - 1
   if BbarHt == -1:
-    BbarHt = (len(b.bitmap) // 2) - 1
+    BbarHt = (heightB // 2) - 1
   diff = (AbarHt - BbarHt) if overlap == -1 else 0
 
   print(f"addRenders ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}")
@@ -397,12 +402,12 @@ def addRenders(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
   #   PLUS add
   # ELSE:
   # MAX(height of a, relative height PLUS height of b MINUS overlap)
-  newHeight = ((len(a.bitmap) + max((AbarHt - len(a.bitmap)) - (BbarHt - len(b.bitmap)), 0) + max(BbarHt - BbarHt, 0))
+  newHeight = ((heightA + max((AbarHt - heightA) - (BbarHt - heightB), 0) + max(BbarHt - AbarHt, 0))
                 if overlap == -1
-                else max(len(a.bitmap), relHt + len(b.bitmap) - overlap)
-              ) if add == 0 else len(a.bitmap) + add
+                else max(heightA, relHt + heightB - overlap)
+              ) if add == 0 else heightA + add
   newArray = Render(a.width + b.width, [0 for _ in range(newHeight)])
-  newArray = mergeRenders(newArray, a, 0, add if diff < 0 else 0)
+  newArray = mergeRenders(newArray, a, 0, add - (diff if diff < 0 else 0))
   newArray = mergeRenders(
     newArray,
     b,
@@ -410,7 +415,7 @@ def addRenders(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
     (diff if diff > 0 else 0) if overlap == -1 else (relHt - overlap),
   )
 
-  print("result of add: ")
-  testPrint(newArray, True)
+  #print("result of add: ")
+  #testPrint(newArray, True)
 
   return newArray

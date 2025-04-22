@@ -51,7 +51,7 @@ rst.value = True  # Default reset state
 spi = busio.SPI(clock=SCK_PIN, MOSI=MOSI_PIN, MISO=None)
 if not spi.try_lock(): raise OSError("Failed to lock SPI bus.")
 
-spi.configure(baudrate=500_000)
+spi.configure(baudrate=10_000_000)
 
 # Helper functions
 def send_command(cmd):
@@ -124,26 +124,26 @@ def clear_display():
             send_data(0x00)
 
 
-def send_bitmap(bitmap, k = 0):
+def send_render(render, k = 0):
     send_command(PAGE_ADDR | 0x00)
     send_command(CLMN_ADR1 | 0x00)
     send_command(CLMN_ADR2 | 0x00)
 
-    for i in range(k - (8 * (k // 8))):
-        bitmap.insert(0, [0] * len(bitmap[0]))
+    render.bitmap = [0] * (k - (8 * (k // 8))) + render.bitmap
     k = (8 * (k // 8))
 
-    for y in range(0, len(bitmap), 8):
+    for y in range(0, len(render.bitmap), 8):
         send_command(PAGE_ADDR | ((y + k) // 8))
         send_command(CLMN_ADR1 | 0x00)
         send_command(CLMN_ADR2 | 0x00)
 
-        for x in range(len(bitmap[0])):
-            send_data(((0b10000000 if y + 7 < len(bitmap) and bitmap[y + 7][x] else 0) |
-                       (0b01000000 if y + 6 < len(bitmap) and bitmap[y + 6][x] else 0) |
-                       (0b00100000 if y + 5 < len(bitmap) and bitmap[y + 5][x] else 0) |
-                       (0b00010000 if y + 4 < len(bitmap) and bitmap[y + 4][x] else 0) |
-                       (0b00001000 if y + 3 < len(bitmap) and bitmap[y + 3][x] else 0) |
-                       (0b00000100 if y + 2 < len(bitmap) and bitmap[y + 2][x] else 0) |
-                       (0b00000010 if y + 1 < len(bitmap) and bitmap[y + 1][x] else 0) |
-                       (0b00000001 if y + 0 < len(bitmap) and bitmap[y + 0][x] else 0)))
+        for x in range(render.width):
+            lenRender = len(render.bitmap)
+            send_data((0b10000000 if (y + 7 < lenRender and (render.bitmap[y + 7] >> (render.width - x - 1)) & 1) else 0) |
+                      (0b01000000 if (y + 6 < lenRender and (render.bitmap[y + 6] >> (render.width - x - 1)) & 1) else 0) |
+                      (0b00100000 if (y + 5 < lenRender and (render.bitmap[y + 5] >> (render.width - x - 1)) & 1) else 0) |
+                      (0b00010000 if (y + 4 < lenRender and (render.bitmap[y + 4] >> (render.width - x - 1)) & 1) else 0) |
+                      (0b00001000 if (y + 3 < lenRender and (render.bitmap[y + 3] >> (render.width - x - 1)) & 1) else 0) |
+                      (0b00000100 if (y + 2 < lenRender and (render.bitmap[y + 2] >> (render.width - x - 1)) & 1) else 0) |
+                      (0b00000010 if (y + 1 < lenRender and (render.bitmap[y + 1] >> (render.width - x - 1)) & 1) else 0) |
+                      (0b00000001 if (y + 0 < lenRender and (render.bitmap[y + 0] >> (render.width - x - 1)) & 1) else 0))
