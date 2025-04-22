@@ -114,10 +114,6 @@ def genRender(eq, exp=False, first = False):
         AbarHt=barHt,
         BbarHt=lastFinishedBarHt,
       )
-      if pair[0] == "|":
-        for h in range(len(render.bitmap)):
-          render.bitmap[h] >>= 1
-        render.width -= 1
       
       barHt = max(barHt, lastFinishedBarHt)
       # Contents
@@ -280,18 +276,18 @@ def genRender(eq, exp=False, first = False):
   lastFinishedBarHt = None if first else barHt
   return render
 
-def readGlyph(g, resizeParenBy = 0, exponent = False, absVal = False):
+def readGlyph(g, resizeBy = 0, exponent = False, absVal = False):
   try:
-    if exponent and abs(resizeParenBy) > 10:
+    if exponent and abs(resizeBy) > 10:
       exponent = False
       g = g[1:]
       
     glyph = prerendered.prerenderedGlyphs[g]
     glyph = Render(glyph[0], glyph[1][:]) # See prerendered.py {Tuple: (w, bmap)}
 
-    if resizeParenBy != 0:
-      for _ in range(abs(resizeParenBy)):
-        glyph.bitmap.insert(4, 2 if absVal else ((2 if exponent else 4) if resizeParenBy < 0 else 1))
+    if resizeBy != 0:
+      for _ in range(abs(resizeBy)):
+        glyph.bitmap.insert(4, 1 if absVal else ((2 if exponent else 4) if resizeBy < 0 else 1))
 
     return glyph
 

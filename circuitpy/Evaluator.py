@@ -106,7 +106,7 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, shouldGuessImag = F
 
   while "|" in eq:
     contents = Between(eq, "|", "|")
-    print(contents)
+    print(f"absCont = '{contents}'")
     
     sign = 1
     if eq[eq.index("|" + contents) - 1] == "-":
@@ -275,9 +275,13 @@ def Between(string, char1, char2):
         return string[string.index(char1) + 1 : i]
   
   else:
-    for i in range(1, len(string) + 1):
-      if string[:i].count(char1) % 2 == 0:
-        return string[string.index(char1) + 1 : i - 1]
+    for i in range(len(string)):
+      cnt = string[:i + 1].count(char1)
+      if cnt > 0 and cnt % 2 == 0:
+        return string[string.index(char1) + 1 : i]
+  
+  #for i in range(len(string))
+  
   
   raise ValueError(f"Unable to find contents between {char1} and {char2}")
 
