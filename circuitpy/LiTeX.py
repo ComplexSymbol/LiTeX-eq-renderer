@@ -228,22 +228,24 @@ def genRender(eq, exp=False, first = False):
         radicand = Evaluator.Between(eq[i + len(n) + 7:], "{", "}")
         i += len(n) + len(radicand) + 8
 
-        n = genRender(n, True) if n != "2" else [[False, False]]
+        n = genRender(n, True) if n != "2" else Render(2, [0])
         radicand = genRender(radicand, exp)
+        stem = Render(2, [0b00] + 
+                        ([0b01] * ((len(radicand.bitmap) + 1) // 2)) + 
+                        ([0b10] * ((len(radicand.bitmap) - (len(radicand.bitmap) + 1) // 2) - 4))
+                     )
 
-        stem = [[False, False]] + ([[False, True]] * ((len(radicand) + 1) // 2))
-        stem += [[True, False]] * ((len(radicand) - (len(radicand) + 1) // 2) - 4)
-        radical = [[False] * (5 + len(radicand[0]) + len(n[0])) for _ in range(max(len(radicand) + 2, len(radicand) + len(n) - 2))]
-        radical = merge2dArrays(radical, n, 0, (len(radical) - len(n)) // 2)
-        radical = merge2dArrays(radical, readGlyph("rad"), len(n[0]) - 2, 0)
-        radical = merge2dArrays(radical, stem, len(n[0]) + 1, 4)
-        radical = merge2dArrays(radical, radicand, len(n[0]) + 3, 0)
-        radical = merge2dArrays(radical, [[True] * (len(radicand[0]) + 3)], len(n[0]) + 2, len(radicand) + 1)
-        radical = merge2dArrays(radical, [[True], [True]], len(radicand[0]) + len(n[0]) + 4, len(radicand) - 1)
+        radical = Render(radicand.width + n.width + 5, [0 for _ in range(2 + len(radicand.bitmap) + max(0, len(n.bitmap) + 2 - len(radicand.bitmap)))])
+        radical = mergeRenders(radical, n, 0, 4)
+        radical = mergeRenders(radical, readGlyph("rad"), n.width - 2, 0)
+        radical = mergeRenders(radical, stem, n.width + 1, 4)
+        radical = mergeRenders(radical, radicand, n.width + 3, 0)
+        radical = mergeRenders(radical, Render(radicand.width + 3, [(0b1 << (radicand.width + 3)) - 1]), n.width + 2, len(radicand.bitmap) + 1)
+        radical = mergeRenders(radical, Render(1, [0b1, 0b1]), radicand.width + n.width + 4, len(radicand.bitmap) - 1)
 
         render = addRenders(render, radical, AbarHt = barHt, BbarHt = lastFinishedBarHt)
         barHt = max(barHt, lastFinishedBarHt) + hang
-        lastHeight = len(radical) + hang
+        lastHeight = len(radical.bitmap) + hang
 
         del n, radicand, stem, radical
 
@@ -373,10 +375,10 @@ def mergeRenders(a, b, x, y):
   return a
 
 def addRenders(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
-  #print("a: ")
-  #testPrint(a, True)
-  #print("b: ")
-  #testPrint(b, True)
+  print("a: ")
+  testPrint(a, True)
+  print("b: ")
+  testPrint(b, True)
 
   if relHt == -1:
     relHt = len(a.bitmap)
@@ -408,7 +410,7 @@ def addRenders(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1, add = 0):
     (diff if diff > 0 else 0) if overlap == -1 else (relHt - overlap),
   )
 
-  #print("result of add: ")
-  #testPrint(newArray, True)
+  print("result of add: ")
+  testPrint(newArray, True)
 
   return newArray

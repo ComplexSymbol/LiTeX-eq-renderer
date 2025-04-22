@@ -14,7 +14,7 @@ if True:
 
   #print("Wait 2 sec...")
   #time.sleep(2)
-  eqs = [r"\frac{log_{3}(6)}{2}"]
+  eqs = [r"\sqrt{2}{2}"]
   #eqs = [r"l_{\frac{1}{3}}(6)"]
   
   renderEQ = [[]]
