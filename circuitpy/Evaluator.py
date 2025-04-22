@@ -22,7 +22,7 @@ operate = {
 }
 
 # Follows strict PEDMAS
-def Evaluate(eq, solve = False, replace = False, guess = 10, SGI = False):
+def Evaluate(eq, solve = False, replace = False, guess = 10, shouldGuessImag = False):
   global trigs, operate
   
   if isFloat(eq):
