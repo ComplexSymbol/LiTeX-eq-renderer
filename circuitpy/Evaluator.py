@@ -90,19 +90,21 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, shouldGuessImag = F
     eq = eq.replace("log_{"+base+"}" + f"({contents})", 
                     str(cmath.log(Evaluate(contents), Evaluate(base))))
   
-
   # P - Parenthesis
-  while "(" in eq:
-    contents = Between(eq, "(", ")")
+  while "(" in eq or "[" in eq:
+    pair = ("(", ")") if "(" in eq else ("[", "]")
+    contents = Between(eq, pair[0], pair[1])
     #print(f"  Found parenthesis with contents{contents}")
     
     sign = 1
-    if eq[eq.index("(" + contents) - 1] == "-":
+    if eq[eq.index(pair[0] + contents) - 1] == "-":
       sign = -1
-      eq = eq[:eq.index("(" + contents) - 1] + eq[eq.index("(" + contents):]
+      eq = eq[:eq.index(pair[0] + contents) - 1] + eq[eq.index(pair[0] + contents):]
 
-    eq = eq.replace(f"({contents})", 
-                    str(sign * Evaluate(contents)).replace("(", "").replace(")", ""))
+    evCont = Evaluate(contents)
+    evCont = abs(evCont) if pair[0] == "[" else evCont
+    eq = eq.replace(f"{pair[0]}{contents}{pair[1]}", 
+                    str(sign * Evaluate(contents)).replace(pair[0], "").replace(pair[1], ""))
 
   while "|" in eq:
     contents = Between(eq, "|", "|")
@@ -273,15 +275,8 @@ def Between(string, char1, char2):
     for i in range(len(string)):
       if string[i] == char2 and (string[:i].count(char1) == string[:i + 1].count(char2)):
         return string[string.index(char1) + 1 : i]
-  
-  else:
-    for i in range(len(string)):
-      cnt = string[:i + 1].count(char1)
-      if cnt > 0 and cnt % 2 == 0:
-        return string[string.index(char1) + 1 : i]
-  
-  #for i in range(len(string))
-  
+
+  # TODO: Maybe use modulo of combined count?
   
   raise ValueError(f"Unable to find contents between {char1} and {char2}")
 

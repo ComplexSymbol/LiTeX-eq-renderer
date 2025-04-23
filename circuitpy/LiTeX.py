@@ -100,9 +100,9 @@ def genRender(eq, exp=False, first = False):
 
       del char
 
-    elif eq[i] == "(" or eq[i] == "|":
+    elif eq[i] == "(" or eq[i] == "[":
       #print(f" Found parenthesis")
-      pair = ("(", ")") if eq[i] == "(" else ("|", "|")
+      pair = ("(", ")") if eq[i] == "(" else ("[", "]")
       contents = Evaluator.Between(eq[i:], pair[0], pair[1])
       renderedConts = genRender(contents, exp)
       parenHeight = max(0, len(renderedConts.bitmap) - (7 if exp else 10))
@@ -110,7 +110,7 @@ def genRender(eq, exp=False, first = False):
       # Opening parenthesis
       render = addRenders(
         render,
-        readGlyph(begWth + pair[0], -parenHeight, exp, pair[0] == "|"),
+        readGlyph(begWth + pair[0], -parenHeight, exp, pair[0] == "["),
         AbarHt=barHt,
         BbarHt=lastFinishedBarHt,
       )
@@ -126,7 +126,7 @@ def genRender(eq, exp=False, first = False):
       # Closing parenthesis
       render = addRenders(
         render,
-        readGlyph(begWth + pair[1], parenHeight, exp, pair[0] == "|"),
+        readGlyph(begWth + pair[1], parenHeight, exp, pair[0] == "["),
         AbarHt=barHt,
         BbarHt=lastFinishedBarHt,
       )
