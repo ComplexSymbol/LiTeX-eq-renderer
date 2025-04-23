@@ -15,7 +15,7 @@ if True:
   #print("Wait 2 sec...")
   #time.sleep(2)
   eqs = [
-         r"log_{(\frac{\frac{1}{log_{2}(3)}}{\e\imsin(\pisin(3))})}(2)"
+         r"tan^{~1}(\frac{50^{2} - \sqrt{2}{50^{4} - 10(10*100^{2} + 2 * 40 * 50^{2})}}{10*100})"
         ]
   
   renderEQ = None
@@ -23,16 +23,17 @@ if True:
   for eqNum in range(len(eqs)):
     equation = eqs[eqNum]
     eq = equation
+    start = time.monotonic()
     renderEQ = LT.genRender(equation, first=True)
+    print(f"Rendered equation in {(time.monotonic() - start) * 1000}ms")
 
     if "=" in eq:
       indx = eq.index("=")
       eq = eq[:indx] + " - ("+eq[indx + 1:]+")"
     
-    ans = EV.Evaluate(eq, solve="x" in eq, replace=True, guess=2, shouldGuessImag=False)
-    ans = (float(ans) if isinstance(ans, float) else
-          "{0:10f}".format(ans.real).rstrip("0").rstrip(".") + ("{0:+10f}".format(ans.imag).rstrip("0").rstrip(".") + r"\im" if
-                ans.imag != 0 else "")).replace("j", r"\im")
+    ans = EV.Evaluate(eq, solve="x" in eq, replace=True, guess=1, shouldGuessImag=True)
+    ans = "{0:10f}".format(ans.real).rstrip("0").rstrip(".") + ("{0:+10f}".format(ans.imag).rstrip("0").rstrip(".") + r"\im" if
+                ans.imag != 0 else "").replace("j", r"\im")
     ans = "~" + ans[1:] if ans[0] == "-" else ans
     ans = ans.replace("j", r"\im")
     renderANS = LT.genRender(("x" if "x" in equation else "") + "=" + ans, first=True)

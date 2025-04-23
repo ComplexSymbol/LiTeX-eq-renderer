@@ -28,7 +28,7 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, shouldGuessImag = F
   if isFloat(eq):
     return toFloat(eq)
   
-  print(f"Standardizing eq: '{eq}'")
+  #print(f"Standardizing eq: '{eq}'")
   
   if replace:
     if '`' in eq:
@@ -57,7 +57,7 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, shouldGuessImag = F
   eq = eq.replace(r"*\perm*", r"\perm").replace(r"*\comb*", r"\comb")
   
   if solve:
-    return NewtonMethod(eq, guess, 8, SGI)
+    return NewtonMethod(eq, guess, 8, shouldGuessImag)
   
   #print(f"Evaluating \'{eq}\'")
   
@@ -97,26 +97,14 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, shouldGuessImag = F
     #print(f"  Found parenthesis with contents{contents}")
     
     sign = 1
-    if eq[eq.index(pair[0] + contents) - 1] == "-":
+    if eq[eq.index(pair[0]) - 1] == "-":
       sign = -1
-      eq = eq[:eq.index(pair[0] + contents) - 1] + eq[eq.index(pair[0] + contents):]
+      eq = eq[:eq.index(pair[0]) - 1] + eq[eq.index(pair[0]):]
 
     evCont = Evaluate(contents)
     evCont = abs(evCont) if pair[0] == "[" else evCont
     eq = eq.replace(f"{pair[0]}{contents}{pair[1]}", 
                     str(sign * Evaluate(contents)).replace(pair[0], "").replace(pair[1], ""))
-
-  while "|" in eq:
-    contents = Between(eq, "|", "|")
-    print(f"absCont = '{contents}'")
-    
-    sign = 1
-    if eq[eq.index("|" + contents) - 1] == "-":
-      sign = -1
-      eq = eq[:eq.index("|" + contents) - 1] + eq[eq.index("|" + contents):]
-    
-    eq = eq.replace(f"|{contents}|",
-                    str(sign * abs(Evaluate(contents))))
 
   # E - Exponents
   while "^" in eq:
@@ -233,7 +221,7 @@ def Evaluate(eq, solve = False, replace = False, guess = 10, shouldGuessImag = F
     #print(eq)
 
   ans = toFloat(eq)
-  print(f"  Finished evaluating; result: {ans}")
+  #print(f"  Finished evaluating; result: {ans}")
   return complex(round(complex(ans).real, 15), round(complex(ans).imag, 15)) if replace else ans
 
 def primeFactors(n):
@@ -271,13 +259,21 @@ def impMult(eq):
 
 # Finds string subset between char1 and char2, with nesting support
 def Between(string, char1, char2):
-  if not char1 == char2:
-    for i in range(len(string)):
-      if string[i] == char2 and (string[:i].count(char1) == string[:i + 1].count(char2)):
-        return string[string.index(char1) + 1 : i]
+  char1Indx = 0
+  char1Cnt = 0
+  char2Cnt = 0
+  for i in range(len(string)):
+    if string[i] == char1:
+      if char1Cnt == 0:
+        char1Indx = i
+      
+      char1Cnt += 1
+    elif string[i] == char2:
+      char2Cnt += 1
+      
+      if char1Cnt == char2Cnt:
+        return string[char1Indx + 1 : i]
 
-  # TODO: Maybe use modulo of combined count?
-  
   raise ValueError(f"Unable to find contents between {char1} and {char2}")
 
 def isFloat(string):
@@ -324,12 +320,12 @@ def NewtonMethod(eq, guess, accuracy, shouldGuessImag, alter = 1, epsilon = 0.00
     testGuess = (guess * derivAtGuess - funcAtGuess) / derivAtGuess
     if not shouldGuessImag and Evaluate(eq.replace("x", str(testGuess))).imag != 0:
       doubleDerivAtGuess = (derivAtGuess - ((funcAtGuess - Evaluate(eq.replace("x", str(guess - inc - inc)))) / inc)) / inc
-      print(f"{'Decrimenting' if doubleDerivAtGuess.real < 0 else 'Incrementing'} guess {guess} by {alter}")
+      #print(f"{'Decrimenting' if doubleDerivAtGuess.real < 0 else 'Incrementing'} guess {guess} by {alter}")
       guess += -alter if doubleDerivAtGuess.real < 0 else alter
       continue
     
     guess = testGuess
-    print(f"New Guess: {guess}")
+    #print(f"New Guess: {guess}")
     
   
   return complex(round(complex(guess).real, accuracy), round(complex(guess).imag, accuracy))

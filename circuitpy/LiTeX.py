@@ -3,80 +3,6 @@ import math
 import prerendered
 #import DictGen
 
-glyphDict = {
-  '(': 0,
-  ')': 11,
-  '0': 22,
-  '1': 33,
-  '2': 44,
-  '3': 55,
-  '4': 66,
-  '5': 77,
-  '6': 88,
-  '7': 99,
-  '8': 110,
-  '9': 121,
-  '+': 132,
-  '*': 143,
-  '-': 154,
-  '~': 165,
-  '/': 176,
-  '.': 187,
-  'x': 198,
-  's': 209,
-  'i': 220,
-  'im': 231,
-  'n': 242,
-  'c': 253,
-  'o': 264,
-  't': 275,
-  'a': 286,
-  'l': 297,
-  'g': 308,
-  'h': 319,
-  'pi': 330,
-  'e': 341,
-  'comb': 352,
-  'perm': 363,
-  '=': 374,
-  'f': 385,
-  '`': 396,
-  'rad': 407,
-  '^(': 413,
-  '^)': 421,
-  '^+': 429,
-  '^-': 437,
-  '^*': 445,
-  '^/': 453,
-  '^0': 461,
-  '^1': 469,
-  '^2': 477,
-  '^3': 485,
-  '^4': 493,
-  '^5': 501,
-  '^6': 509,
-  '^7': 517,
-  '^8': 525,
-  '^9': 533,
-  '^x': 541,
-  '^s': 549,
-  '^im': 557,
-  '^i': 565,
-  '^n': 573,
-  '^c': 581,
-  '^o': 589,
-  '^t': 597,
-  '^a': 605,
-  '^l': 613,
-  '^g': 621,
-  '^h': 629,
-  '^pi': 637,
-  '^e': 645,
-  '^~': 653,
-  '^`': 661,
-  '^.': 669,
-}
-
 lastFinishedBarHt = None
 def genRender(eq, exp=False, first = False):
   global lastFinishedBarHt
@@ -89,11 +15,11 @@ def genRender(eq, exp=False, first = False):
   eq = eq.replace(" ", "")
 
   while i < len(eq):
-    print(f"Parsing char: {eq[:i] + ' [' + eq[i] + '] ' + eq[i + 1:]} with hang {hang}")
+    #print(f"Parsing char: {eq[:i] + ' [' + eq[i] + '] ' + eq[i + 1:]} with hang {hang}")
 
     # Trivial characters
     if eq[i].isdigit() or eq[i].isalpha() or eq[i] in ("+", "-", "*", "/", "=", ".", "~", "`"):
-      print(f" Appending digit '{eq[i]}'")
+      #print(f" Appending digit '{eq[i]}'")
       char = readGlyph(begWth + eq[i])
       render = addRenders(render, char, AbarHt=barHt)
       lastHeight = len(char.bitmap)
@@ -235,8 +161,8 @@ def genRender(eq, exp=False, first = False):
         radicand = genRender(radicand, exp)
         radicandHeight = len(radicand.bitmap)
         stem = Render(2, [0b00] + 
-                        ([0b01] * ((radicandHeight + 1) // 2)) + 
-                        ([0b10] * ((radicandHeight - (radicandHeight + 1) // 2) - 4))
+                        ([0b01] * ((radicandHeight) // 2)) + 
+                        ([0b10] * ((radicandHeight - (radicandHeight + 1) // 2) - 3))
                      )
 
         radical = Render(radicand.width + n.width + 5, [0 for _ in range(2 + radicandHeight + max(0, len(n.bitmap) + 2 - radicandHeight))])
@@ -260,18 +186,7 @@ def genRender(eq, exp=False, first = False):
 
     i += 1
 
-  #print("Removing overhead...")
-  #count = 0
-  #while True:
-  #  if render.bitmap[0] == 0:
-  #    del render.bitmap[0]
-  #    count += 1
-  #    continue
-  #  break
-  #render.bitmap.insert(0, 0)
-  #print(f"Removed {max(0,count - 1)} empty overhead lines")
-
-  print(f"Finished parsing {eq}")
+  #print(f"Finished parsing {eq}")
 
   lastFinishedBarHt = None if first else barHt
   return render
@@ -308,14 +223,45 @@ class Render:
 
     self.bitmap = bmap or []
     self.width = w
-    
+
+printGlyphs = {
+  0b0000: "  ",
+  0b0001: " ▄",
+  0b0010: "▄ ",
+  0b0011: "▄▄",
+  0b0100: " ▀",
+  0b0101: " █",
+  0b0110: "▄▀",
+  0b0111: "▄█",
+  0b1000: "▀ ",
+  0b1001: "▀▄",
+  0b1010: "█ ",
+  0b1011: "█▄",
+  0b1100: "▀▀",
+  0b1101: "▀█",
+  0b1110: "█▀",
+  0b1111: "██"
+}  
 def testPrint(render, prettyPrint=False):
   if not isinstance(render, Render):
     raise TypeError(f"render ({render}) is not of type Render and cannot be testPrinted")
 
   if prettyPrint:
-    for i, row in enumerate(render.bitmap):
-      print(('0' * (render.width - max(1, row.bit_length())) + f"{row:b}").replace("1", "██").replace("0", "{}"))
+    if len(render.bitmap) % 2 != 0:
+      render.bitmap.append([0])
+    if render.width % 2 != 0:
+      render.width += 1
+    
+    for y in range(0, len(render.bitmap), 2):
+      for x in range(0, render.width, 2):
+        key = (
+          (0b1000 if (render.bitmap[y] >> (render.width - x - 1)) & 1 else 0) |
+          (0b0100 if (render.bitmap[y] >> (render.width - x - 2)) & 1 else 0) |
+          (0b0010 if (render.bitmap[y + 1] >> (render.width - x - 1)) & 1 else 0) |
+          (0b0001 if (render.bitmap[y + 1] >> (render.width - x - 2)) & 1 else 0)
+        )
+        print(printGlyphs[key], end="")
+      print()
 
   else:
     print("[", end="")
@@ -333,11 +279,6 @@ def mergeRenders(a, b, x, y):
   return a
 
 def addRenders(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1):
-  #print("a: ")
-  #testPrint(a)
-  #print("b: ")
-  #testPrint(b)
-
   heightA = len(a.bitmap)
   heightB = len(b.bitmap)
   if relHt == -1:
@@ -348,15 +289,8 @@ def addRenders(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1):
     BbarHt = (heightB // 2) - 1
   diff = (AbarHt - BbarHt) if overlap == -1 else 0
 
-  print(f"addRenders ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}")
+  #print(f"addRenders ARGS: overlap: {overlap}, relHt: {relHt}, AbarHt: {AbarHt}, BbarHt: {BbarHt}, diff: {diff}")
 
-  # IF NOT OVERLAP: 
-  #   height of a 
-  #   PLUS how much taller b's contents are when barHt is aligned 
-  #   PLUS how much lower b's contents are when barHt is aligned 
-  #   PLUS add
-  # ELSE:
-  # MAX(height of a, relative height PLUS height of b MINUS overlap)
   newHeight = ((heightA + max((AbarHt - heightA) - (BbarHt - heightB), 0) + max(BbarHt - AbarHt, 0))
               if overlap == -1
               else max(heightA, relHt + heightB - overlap))
@@ -368,8 +302,5 @@ def addRenders(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1):
     a.width,
     (diff if diff > 0 else 0) if overlap == -1 else (relHt - overlap),
   )
-
-  #print("result of add: ")
-  #testPrint(newArray, True)
 
   return newArray
