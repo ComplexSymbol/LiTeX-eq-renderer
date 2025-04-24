@@ -37,7 +37,7 @@ print()
 for eqNum in range(len(eqs)):
   start = time.monotonic_ns()
   renderEQ = LT.genRender(eqs[eqNum])
-  print(f"rendered in {(time.monotonic_ns() - start) / 1_000_000}ms")
+  print(f"Rendered in {(time.monotonic_ns() - start) / 1_000_000}ms")
 
   print("Sending Data...\n")
   SPI.send_render(renderEQ, 0)
@@ -51,7 +51,10 @@ if "=" in eq:
   indx = eq.index("=")
   eq = eq[:indx] + " - ("+eq[indx + 1:]+")"
 
-ans = EV.Evaluate(eq, solve="x" in eq, replace=True, guess=2, shouldGuessImag=False)
+start = time.monotonic_ns()
+ans = EV.Evaluate(eq, solve="x" in eq, repl=True, guess=2, shouldGuessImag=False)
+print(f"Evaluated in {(time.monotonic_ns() - start) / 1_000_000}ms")
+
 ans = (float(ans) if isinstance(ans, float) else
       "{0:10f}".format(ans.real).rstrip("0").rstrip(".") + ("{0:+10f}".format(ans.imag).rstrip("0").rstrip(".") + r"\im" if
             ans.imag != 0 else "")).replace("j", r"\im")
