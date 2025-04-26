@@ -1,10 +1,9 @@
 import Evaluator
 import math
 import prerendered
-#import DictGen
 
 lastFinishedBarHt = None
-def genRender(eq, exp=False, first = False):
+def genRender(eq, exp=False, first=False):
   global lastFinishedBarHt
   i = 0
   begWth = "" if exp == False else "^"
@@ -29,7 +28,7 @@ def genRender(eq, exp=False, first = False):
     elif eq[i] == "(" or eq[i] == "[":
       #print(f" Found parenthesis")
       pair = ("(", ")") if eq[i] == "(" else ("[", "]")
-      contents = Evaluator.Between(eq[i:], pair[0], pair[1])
+      contents = Evaluator.Between(eq, i, pair[0], pair[1])
       renderedConts = genRender(contents, exp)
       parenHeight = max(0, len(renderedConts.bitmap) - (7 if exp else 10))
 
@@ -66,8 +65,8 @@ def genRender(eq, exp=False, first = False):
       isPwr = eq[i] == "^"
       #print(f"Found exponent/subscript at index {i}")
 
-      contents = Evaluator.Between(eq[i:], "{", "}")
-      ln = len(contents)
+      contents = Evaluator.Between(eq, i, "{", "}")
+      i += len(contents) + 2
       contents = genRender(contents, True)
 
       if isPwr:
@@ -81,41 +80,33 @@ def genRender(eq, exp=False, first = False):
         hang += contentLen - 4
         del contentLen
 
-      i += ln + 2
-      del isPwr, contents,
+      del isPwr, contents
 
     elif eq[i] == "\\":
       #print("Found escape sequence")
       esc = None
       # Operator or escape character?
       try:
-        esc = Evaluator.Between(eq[i:], "\\", "{")
+        esc = Evaluator.Between(eq, i, "\\", "{")
       except ValueError: pass
 
       # Escape character (Special Character)
       if esc == None or not esc.isalpha():
         specials = ["pi", "e", 'im', "perm", "comb"]
-        tries = [eq[i + 1:].startswith(ch) for ch in specials]
-
-        # None of the accepted special characters were found
-        if not any(tries):
-          raise ValueError(f"Unidentified special character starting at: {eq[i:]}")
-
-        #print(f"Found special character: {specials[tries.index(True)]}")
-
-        # Generate render for character, then append it to the render and increment i
-        char = readGlyph(begWth + specials[tries.index(True)])
-        render = addRenders(render, char, AbarHt = barHt)
-        lastHeight = len(char.bitmap)
-        i += len(specials[tries.index(True)])
-
-        del specials, tries, char
+        for sp in specials:
+          if eq.startswith(sp, i + 1):
+            # Generate render for character, then append it to the render and increment i
+            char = readGlyph(begWth + sp)
+            render = addRenders(render, char, AbarHt = barHt)
+            lastHeight = len(char.bitmap)
+            i += len(sp)
+            del char
 
       # Found fraction!
       elif esc == "frac":
         # Numerator & Denominator for fraction.
-        num = Evaluator.Between(eq[i:], "{", "}")
-        den = Evaluator.Between(eq[i + len(num) + 7:], "{", "}")
+        num = Evaluator.Between(eq, i, "{", "}")
+        den = Evaluator.Between(eq, i + len(num) + 7, "{", "}")
         #print(f"Setting i to: {i + len(num) + len(den) + 8}" )
         i += len(num) + len(den) + 8
 
@@ -153,8 +144,8 @@ def genRender(eq, exp=False, first = False):
 
       elif esc == "sqrt":
         # Nth root
-        n = Evaluator.Between(eq[i:], "{", "}")
-        radicand = Evaluator.Between(eq[i + len(n) + 7:], "{", "}")
+        n = Evaluator.Between(eq, i, "{", "}")
+        radicand = Evaluator.Between(eq, i + len(n) + 7, "{", "}")
         i += len(n) + len(radicand) + 8
 
         n = genRender(n, True) if n != "2" else Render(2, [0])
@@ -177,7 +168,7 @@ def genRender(eq, exp=False, first = False):
         barHt = max(barHt, lastFinishedBarHt) + hang
         lastHeight = len(radical.bitmap) + hang
 
-        del n, radicand, stem, radical
+        del n, radicand, stem, radical, radicandHeight
 
       del esc
 
@@ -195,14 +186,13 @@ def readGlyph(g, resizeBy = 0, exponent = False, absVal = False):
   try:
     if exponent and abs(resizeBy) > 10:
       exponent = False
-      g = g[1:]
+      g = g[2]
       
     glyph = prerendered.prerenderedGlyphs[g]
-    glyph = Render(glyph[0], glyph[1][:]) # See prerendered.py {Tuple: (w, bmap)}
+    glyph = Render(glyph[0], glyph[1].copy() if resizeBy != 0 else glyph[1]) # See prerendered.py {Tuple: (w, bmap)}
 
     if resizeBy != 0:
-      for _ in range(abs(resizeBy)):
-        glyph.bitmap.insert(4, 1 if absVal else ((2 if exponent else 4) if resizeBy < 0 else 1))
+      glyph.bitmap[4:4] = [1 if absVal else ((2 if exponent else 4) if resizeBy < 0 else 1)] * abs(resizeBy)
 
     return glyph
 
@@ -271,10 +261,11 @@ def testPrint(render, prettyPrint=False):
 
 
 def mergeRenders(a, b, x, y):
-  y = len(a.bitmap) - y
+  lenA = len(a.bitmap)
+  y = lenA - y
   
-  for h in range(y + 1 - len(b.bitmap), min(len(a.bitmap), y + 1)):
-    a.bitmap[h] |= b.bitmap[h - y] << max(0, a.width - x - b.width)
+  for h in range(y + 1 - len(b.bitmap), min(lenA, y + 1)):
+    a.bitmap[h] |= b.bitmap[h - y] << a.width - x - b.width
 
   return a
 
@@ -303,4 +294,5 @@ def addRenders(a, b, overlap=-1, relHt=-1, AbarHt=-1, BbarHt=-1):
     (diff if diff > 0 else 0) if overlap == -1 else (relHt - overlap),
   )
 
+  del a, b
   return newArray
