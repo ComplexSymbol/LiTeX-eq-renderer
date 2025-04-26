@@ -44,7 +44,7 @@ for eqNum in range(len(eqs)):
 
   #LT.testPrint(renderEQ, True)
 
-equation = eqs[-1]
+equation = eqs[eqNum]
 eq = equation
 
 if "=" in eq:

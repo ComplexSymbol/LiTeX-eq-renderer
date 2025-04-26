@@ -134,10 +134,8 @@ def genRender(eq, exp=False, first=False):
           1,
           denLen + 1,
         )
+        render = addRenders(render, fraction, AbarHt=barHt, BbarHt=denLen)
         barHt = max(barHt, denLen) + hang
-        render = addRenders(
-          render, fraction, AbarHt=barHt, BbarHt=denLen
-        )
         lastHeight = len(fraction.bitmap) + hang
 
         del num, den, fraction, denLen
@@ -192,7 +190,7 @@ def readGlyph(g, resizeBy = 0, exponent = False, absVal = False):
     glyph = Render(glyph[0], glyph[1].copy() if resizeBy != 0 else glyph[1]) # See prerendered.py {Tuple: (w, bmap)}
 
     if resizeBy != 0:
-      glyph.bitmap[4:4] = [1 if absVal else ((2 if exponent else 4) if resizeBy < 0 else 1)] * abs(resizeBy)
+      glyph.bitmap[4:4] = [2 if absVal else ((2 if exponent else 4) if resizeBy < 0 else 1)] * abs(resizeBy)
 
     return glyph
 

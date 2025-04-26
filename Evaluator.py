@@ -1,5 +1,6 @@
 import math
 import cmath
+from time import monotonic_ns
 
 trigs = {
   'sin': lambda x: cmath.sin(x) if isinstance(x, complex) else math.sin(x),
@@ -10,7 +11,7 @@ trigs = {
   'cot': lambda x: 1 / (cmath.tan(x) if isinstance(x, complex) else math.tan(x)),
   'asin': lambda x: cmath.asin(x) if isinstance(x, complex) else math.asin(x),
   'acos': lambda x: cmath.acos(x) if isinstance(x, complex) else math.acos(x),
-  'atan': lambda x: 1 if isinstance(x, complex) else math.atan(x)
+  'atan': lambda x: cmath.atan(x) if isinstance(x, complex) else math.atan(x)
 }
 
 operate = {
@@ -21,13 +22,12 @@ operate = {
 }
 
 # Follows strict PEDMAS
-def Evaluate(eq, solve = False, repl = False, guess = 10, shouldGuessImag = False):  
+def Evaluate(eq, solve = False, repl = False, guess = 10, shouldGuessImag = False, head=""):   
   if isFloat(eq):
     return toFloat(eq)
     
   if repl:
-    #print(f"Standardizing eq: '{eq}'")
-
+    #print(head + f"Standardizing eq: '{eq}'")
     if '`' in eq:
       raise ValueError("Incomplete expression")
 
@@ -37,22 +37,19 @@ def Evaluate(eq, solve = False, repl = False, guess = 10, shouldGuessImag = Fals
   
     # Change constants into numbers
     eq = eq.replace("\\pi", f"{math.pi}").replace("\\e", f"{math.e}")
-    #print(f"   Eq is {eq} after replacing constants")
+    #print(head + f"   Eq is {eq} after replacing constants")
 
   eq = impMult(eq)
     
   if solve:
     return NewtonMethod(eq, guess, 8, shouldGuessImag)
   
-  #print(f"Evaluating \'{eq}\'")
+  #print()
+  #print(head + f"Evaluating \'{eq}\'")
   
   # P - Parenthetical function (trig)
-  while True:
-    found = [(eq.find(func), func) for func in ["sin", "cos", "tan", "sec", "csc", "cot"] if func in eq]
-
-    if not found:
-      break
-
+  found = None
+  while found := [(eq.find(func + "("), func) for func in ["sin", "cos", "tan", "sec", "csc", "cot"] if func in eq]:
     pos, func = min(found, key=lambda x: x[0])  # Get first match in string
 
     is_inverse = False
@@ -62,157 +59,144 @@ def Evaluate(eq, solve = False, repl = False, guess = 10, shouldGuessImag = Fals
     
     contents = Between(eq, eq.index(func[1:] if is_inverse else func) + (8 if is_inverse else 3), "(", ")")
 
-    #print(f"  Found trig function {func} with contents {contents}")
-    eq = eq.replace(f"{found[0][1] + "^{-1}" if is_inverse else func}({contents})", 
-                    str(trigs[func](Evaluate(contents))))
+    #print(head + f"  Found trig function {func} with contents {contents}")
+    eq = eq[:pos] + str(trigs[func](Evaluate(contents, head="  "))) + eq[pos + (10 if is_inverse else 5) + len(contents):]
+    #eq = eq.replace(f"{found[0][1] + "^{-1}" if is_inverse else func}({contents})", 
+    #                str(trigs[func](Evaluate(contents))))
 
-  # P - Parenthetical function (log)  
-  while "log" in eq: 
-    location = eq.index("log")
-    base = Between(eq, location + 3, "{", "}")
-    contents = Between(eq, location + len(base) + 6, "(", ")")
-    #print(f"  Found logarithm with base {base} and contents {contents}")
+  # P - Parenthetical function (log)
+  loc = None
+  while (loc := eq.find("log")) != -1:
+    base = Between(eq, loc + 3, "{", "}")
+    contents = Between(eq, loc + len(base) + 6, "(", ")")
+    #print(head + f"  Found logarithm with base {base} and contents {contents}")
     
-    eq = eq.replace("log_{"+base+"}" + f"({contents})", 
-                    str(cmath.log(Evaluate(contents), Evaluate(base))))
-  
+    # 01234....910........19
+    # log_{base}(contents)
+    # 4 + len(base)(4) + 2 + len(contents)(8) + 1 + 1
+    # = 8 + len(base)(4) + len(contents)(8)
+
+    eq = (eq[:loc]
+          + str(cmath.log(Evaluate(contents, head="  "), Evaluate(base, head="  "))) 
+          + eq[loc + 8 + len(base) + len(contents):])
+    #eq = eq.replace(f"log_{{{base}}}({contents})", str(cmath.log(Evaluate(contents), Evaluate(base))))
+
   # P - Parenthesis
   while "(" in eq or "[" in eq:
     pair = ("(", ")") if "(" in eq else ("[", "]")
     contents = Between(eq, 0, pair[0], pair[1])
-    #print(f"  Found {'parenthesis' if pair[0] == '(' else 'absolute value'} with contents{contents}")
+    #print(head + f"  Found {'parenthesis' if pair[0] == '(' else 'absolute value'} with contents {contents}")
     
-    sign = 1
-    if eq[eq.index(pair[0]) - 1] == "-":
-      sign = -1
-      eq = eq[:eq.index(pair[0]) - 1] + eq[eq.index(pair[0]):]
-
-    evCont = Evaluate(contents)
-    evCont = abs(evCont) if pair[0] == "[" else evCont
     eq = eq.replace(f"{pair[0]}{contents}{pair[1]}", 
-                    str(sign * evCont).replace(pair[0], "").replace(pair[1], ""))
+                    str(abs(Evaluate(contents, head="  ")) if pair[0] == "[" else Evaluate(contents, head="  ")))
 
   # E - Exponents
-  while "^" in eq:
-    exp = Between(eq, eq.index("^"), "{", "}")
-    base = None
+  loc = None
+  while (loc := eq.find("^")) != -1:
+    exp = Between(eq, loc, "{", "}")
     
     i = 0
-    base = eq[:eq.index("^")]
+    base = eq[:loc]
     while not isFloat(base): 
       i += 1
-      base = eq[:eq.index("^")][i:]
+      base = eq[:loc][i:]
 
     if eq[eq.index(base) - 1] == "+":
       base = base[1:]
     
-    #print(f"  Found exponent with base {base} and exponent {exp}")
-    eq = eq.replace(base + "^{"+exp+"}",
-                    str(toFloat(pow(toFloat(base), Evaluate(exp)))))
+    #print(head + f"  Found exponent with base {base} and exponent {exp}")
+    eq = eq[:loc - len(base)] + str(pow(toFloat(base), Evaluate(exp, head="  "))) + eq[3 + loc + len(exp):]
+    #eq = eq.replace(base + "^{"+exp+"}",
+    #                str(pow(toFloat(base), Evaluate(exp))))
 
   # E - Exponents (square root)
-  while r"sqrt" in eq:
-    start = eq.index(r"\sqrt") + 5
-    nthroot = Between(eq, start, "{", "}")
-    contents = Between(eq, start + len(nthroot) + 2, "{", "}")
-    #print(f"  Found a {nthroot} degree radical containing {contents}")
+  loc = None
+  while (loc := eq.find("\\sqrt")) != -1:
+    nthroot = Between(eq, loc + 5, "{", "}")
+    contents = Between(eq, loc + 5 + len(nthroot) + 2, "{", "}")
+    #print(head + f"  Found a {nthroot} degree radical containing {contents}")
     
-    eq = eq.replace(r"\sqrt{"+nthroot+"}" + "{"+contents+"}", 
-                    str(toFloat(pow(Evaluate(contents), 1 / Evaluate(nthroot)))))
+    eq = eq[:loc] + str(pow(Evaluate(contents, head="  "), 1 / Evaluate(nthroot, head="  "))) + eq[loc + len(nthroot) + len(contents) + 9:]
+    #eq = eq.replace(r"\sqrt{"+nthroot+"}" + "{"+contents+"}", 
+    #                str(pow(Evaluate(contents), 1 / Evaluate(nthroot))))
 
   # D - Division (Fractions have priority)
-  while r"frac" in eq:
-    start = eq.index(r"\frac") + 5
-    numer = Between(eq, start, "{", "}")
-    denom = Between(eq, start + len(numer) + 2, "{", "}")
-    #print(f"  Found a fraction with numerator {numer} and denominator {denom}")
+  loc = None
+  while (loc := eq.find("\\frac")) != -1:
+    numer = Between(eq, loc + 5, "{", "}")
+    denom = Between(eq, loc + len(numer) + 7, "{", "}")
+    #print(head + f"  Found a fraction with numerator {numer} and denominator {denom}")
     
-    eq = eq.replace(r"\frac{"+numer+"}" + "{"+denom+"}", 
-                    str(toFloat(Evaluate(numer) / Evaluate(denom))))
+    eq = eq[:loc] + str(Evaluate(numer, head="  ") / Evaluate(denom, head="  ")) + eq[loc + len(numer) + len(denom) + 9:]
+    #eq = eq.replace(f"\\frac{{{numer}}}{{{denom}}}",
+    #                str(Evaluate(numer) / Evaluate(denom)))
+
+  # Permutations and Combinations
+  loc = None
+  while (loc := eq.find("\\comb")) != -1 or (loc := eq.find("\\perm")) != -1:
+    op = r"*\comb*" if eq[loc + 1] == "c" else r"*\perm*"
+    
+    i = 0
+    bef = eq[:loc - 1]
+    while not isFloat(bef[i:]):
+      i += 1
+    n = bef[i:]
+    
+    i = len(eq)
+    aft = eq[loc + 6:]
+    while not isFloat(aft[:i]):
+      i -= 1
+    r = aft[:i]
+
+    #print(f"Found {op} with n: {n} and r: {r}")
+    
+    intR = int(r)
+    eq = eq.replace(n + op + r, str(permute(int(n), intR) / (permute(intR, intR - 1) if op[2] == "c" else 1)))
 
   # Reevaluate parenthesis because complex numbers
   while "(" in eq:
     contents = Between(eq, 0, "(", ")")
-    #print(f"  Found parenthesis with contents{contents}")
+    #print(head + f"  Found parenthesis with contents {contents}")
     
-    sign = 1
-    if eq[eq.index("(" + contents) - 1] == "-":
-      sign = -1
-      eq = eq[:eq.index("(" + contents) - 1] + eq[eq.index("(" + contents):]
+    eq = eq.replace(f"({contents})", str(Evaluate(contents, head="  ")).replace("(", "").replace(")", ""))
 
-    eq = eq.replace(f"({contents})", 
-                    str(sign * Evaluate(contents)).replace("(", "").replace(")", ""), 1)
-  
-  # Permutations and Combinations
-  while r"\perm" in eq or r"\comb" in eq:
-    eq = eq.replace("*\\perm*", "\\perm").replace("*\\comb*", "\\comb")
-    isComb = r"\comb" in eq
-    indx = eq.index(r"\comb" if isComb else r"\perm")
-    
-    i = 0
-    while not isFloat(eq[:indx][i:]):
-      i += 1
-    n = eq[:indx][i:]
-    
-    i = len(eq)
-    while not isFloat(eq[indx + 5:][:i]):
-      i -= 1
-    r = eq[indx + 5:][:i]
-    
-    eq = eq.replace(n + (r"\comb" if isComb else r"\perm") + r,
-                    str(math.perm(int(n), int(r)) / (math.factorial(int(r)) if isComb else 1)))
-  
   # DMAS - In that order
-  eq = eq.replace("+-", "-")
-  replaced = False
-  doNotCheck = False
   curOp = 0
-  progress = max(0, eq.find("/"))
-  #print(f"  Finding operations in {eq}")
-  while doNotCheck or (set(eq) & frozenset("/*+-") and not isFloat(eq)):
-    opStr = ("/", "*", "+", "-")[curOp]
-    
-    if not opStr in eq[progress:]:
+  progress = 0
+  doNotCheck = False
+  #print(head + f"  Finding operations in {eq}")
+  
+  #start = monotonic_ns()
+  while doNotCheck or not isFloat(eq):
+    if (progress := eq.find(("/", "*", "+", "-")[curOp], progress)) == -1:
       curOp += 1 if curOp < 3 else -1
       progress = 0
       doNotCheck = True
       continue
-        
-    progress = eq.index(opStr, progress)
-    if eq[progress - 1] == "e":
-      doNotCheck = True
-      continue
     
-    if not replaced and " " in eq and curOp == 3:
-      eq = eq.replace(" ", "")
-      progress = 0
-      replaced = True
-      doNotCheck = True
-      continue
-
     doNotCheck = False
-    
-    i = 0
-    while not isFloat(eq[:progress][i:]): i += 1
-    first = eq[:progress][i:]
-    
-    i = len(eq) - progress
-    while not isFloat(eq[progress + 1:][:i]): i -= 1
-    second = eq[progress + 1:][:i]
 
+    lenEq = len(eq)
+
+    befOp = eq[:progress]
+    i = floatIndx(befOp)
+    first = befOp[i:]
+    
+    aftOp = eq[progress + 1:]
+    j = floatIndx(aftOp, backwards=True)
+    second = aftOp[:j]
+  
     repl = str(operate[curOp](first, second))
-    if repl[-2] == "j":
-      repl = repl[1:][:-1]
+    if repl[0] == "(":
+      repl = repl[1:-1]
 
-    #print(f"  Found operator \'{eq[progress]}\' with first \'{first}\' and second \'{second}\'. Result: {repl}")
-    eq = eq.replace(f"{first}{eq[progress]}{second}", 
-                    repl)
-    #print(f"setting progress from {progress} to {progress - len(first) + len(repl) - 1}")
-    progress = progress - len(first) + len(repl) - 1
-    #print(eq)
+    eq = eq[:i] + repl + eq[lenEq - (lenEq - progress - 1) + j:]
+    progress -= (i - len(repl) + 1)
+  
+  #print(head + f"  operated eq in {(monotonic_ns() - start) / 1_000_000}ms")
 
   ans = toFloat(eq)
-  #print(f"  Finished evaluating; result: {ans}")
+  #print(head + f"Finished evaluating; result: {ans}\n")
   return complex(round(complex(ans).real, 15), round(complex(ans).imag, 15)) if repl else ans
 
 def primeFactors(n):
@@ -227,7 +211,17 @@ def primeFactors(n):
   if n > 1:
     factors.append(n)
   return factors
-  
+
+def permute(n, r):
+    if r > n or r < 0:
+        raise ValueError("r must be in the range 0 <= r <= n")
+    if r == 0:
+        return 1
+    total = 1
+    for fact in range(n, n - r, -1):
+        total *= fact
+    return total
+
 # Add implicit multiplication
 def impMult(eq):
   i = 0
@@ -266,9 +260,26 @@ def Between(string, start, char1, char2):
 
   raise ValueError(f"Unable to find contents between {char1} and {char2}")
 
+# Finds float indices in string
+def floatIndx(s, backwards=False):
+  lenS = len(s)
+  if backwards:
+    idx = lenS
+    while idx > 0:
+      idx -= 1
+      if isFloat(s[:idx + 1]):
+        return idx + 1
+  else:
+    idx = 0
+    while idx < lenS:
+      if isFloat(s[idx:]):
+        return idx
+      idx += 1
+  return 0
+
 def isFloat(string):
   if len(string) == 0 or string[0] == "+": return False
-  
+
   try:
     toFloat(string)
     return True
@@ -276,10 +287,8 @@ def isFloat(string):
   except ValueError:
     return False
     
-def toFloat(string):  
+def toFloat(string):
   cmplx = complex(string)
-
-  # Complex or imaginary
   return cmplx if cmplx.imag != 0 else cmplx.real
   
 inc = 0.001
