@@ -32,6 +32,10 @@ eqs = [
   r"1 + \e^{2\pi\im} - 3\sqrt{2}{\frac{sin(4)}{3}}",
 ]
 
+eqs = [
+  r"1+\e^{2\pi\im}"
+]
+
 renderEQ = None
 print()
 for eqNum in range(len(eqs)):

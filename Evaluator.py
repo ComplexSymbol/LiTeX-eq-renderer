@@ -88,7 +88,9 @@ def Evaluate(eq, solve = False, repl = False, guess = 10, shouldGuessImag = Fals
     #print(head + f"  Found {'parenthesis' if pair[0] == '(' else 'absolute value'} with contents {contents}")
     
     eq = eq.replace(f"{pair[0]}{contents}{pair[1]}", 
-                    str(abs(Evaluate(contents, head="  ")) if pair[0] == "[" else Evaluate(contents, head="  ")))
+                    str(abs(Evaluate(contents, head="  ")) if pair[0] == "[" else Evaluate(contents, head="  "))
+                       .replace(pair[0], "").replace(pair[1], "")
+                   )
 
   # E - Exponents
   loc = None
@@ -97,12 +99,9 @@ def Evaluate(eq, solve = False, repl = False, guess = 10, shouldGuessImag = Fals
     
     i = 0
     base = eq[:loc]
-    while not isFloat(base): 
+    while not isFloat(base):
       i += 1
       base = eq[:loc][i:]
-
-    if eq[eq.index(base) - 1] == "+":
-      base = base[1:]
     
     #print(head + f"  Found exponent with base {base} and exponent {exp}")
     eq = eq[:loc - len(base)] + str(pow(toFloat(base), Evaluate(exp, head="  "))) + eq[3 + loc + len(exp):]
@@ -137,21 +136,16 @@ def Evaluate(eq, solve = False, repl = False, guess = 10, shouldGuessImag = Fals
     op = r"*\comb*" if eq[loc + 1] == "c" else r"*\perm*"
     
     i = 0
-    bef = eq[:loc - 1]
-    while not isFloat(bef[i:]):
+    while not isFloat(eq[:loc - 1][i:]):
       i += 1
-    n = bef[i:]
+    n = eq[:loc][i:]
     
     i = len(eq)
-    aft = eq[loc + 6:]
-    while not isFloat(aft[:i]):
+    while not isFloat(eq[loc + 6:][:i]):
       i -= 1
-    r = aft[:i]
-
-    #print(f"Found {op} with n: {n} and r: {r}")
+    r = eq[loc + 5:][:i]
     
-    intR = int(r)
-    eq = eq.replace(n + op + r, str(permute(int(n), intR) / (permute(intR, intR - 1) if op[2] == "c" else 1)))
+    eq = eq.replace(n + op + r, str(math.perm(int(n), int(r)) / (math.factorial(int(r)) if op[2] == "c" else 1)))
 
   # Reevaluate parenthesis because complex numbers
   while "(" in eq:
@@ -178,20 +172,29 @@ def Evaluate(eq, solve = False, repl = False, guess = 10, shouldGuessImag = Fals
 
     lenEq = len(eq)
 
+    i = 0
     befOp = eq[:progress]
-    i = floatIndx(befOp)
-    first = befOp[i:]
+    first = befOp
+    while not isFloat(first) or first[0] == " ": 
+      first = befOp[(i := i + 1):]
     
     aftOp = eq[progress + 1:]
-    j = floatIndx(aftOp, backwards=True)
-    second = aftOp[:j]
-  
+    j = lenEq - progress - 1
+    second = aftOp
+    while not isFloat(second):
+      second = aftOp[:(j := j - 1)]
+
+    #print(head + f"    found operator {curOp} with first {first} and second {second}")
+    #print(f"result: {str(operate[curOp](first, second))}")
+
     repl = str(operate[curOp](first, second))
     if repl[0] == "(":
       repl = repl[1:-1]
 
     eq = eq[:i] + repl + eq[lenEq - (lenEq - progress - 1) + j:]
     progress -= (i - len(repl) + 1)
+
+    #print(f"eq: {eq}")
   
   #print(head + f"  operated eq in {(monotonic_ns() - start) / 1_000_000}ms")
 
@@ -211,17 +214,7 @@ def primeFactors(n):
   if n > 1:
     factors.append(n)
   return factors
-
-def permute(n, r):
-    if r > n or r < 0:
-        raise ValueError("r must be in the range 0 <= r <= n")
-    if r == 0:
-        return 1
-    total = 1
-    for fact in range(n, n - r, -1):
-        total *= fact
-    return total
-
+  
 # Add implicit multiplication
 def impMult(eq):
   i = 0
@@ -237,7 +230,7 @@ def impMult(eq):
         (eq[i] == ")" and eq[i + 1].isdigit()) or # ...)7
         (eq[i] == ")" and eq[i + 1].isalpha()) or # ...)x...
         (eq[i] == "}" and eq[i + 1].isdigit())): # ...2}7
-      eq = eq[:i + 1] + "*" + eq[i + 1:] # Insert multiplication
+      eq = eq[:i + 1] + " * " + eq[i + 1:] # Insert multiplication
     i += 1
   return eq
 
@@ -260,22 +253,6 @@ def Between(string, start, char1, char2):
 
   raise ValueError(f"Unable to find contents between {char1} and {char2}")
 
-# Finds float indices in string
-def floatIndx(s, backwards=False):
-  lenS = len(s)
-  if backwards:
-    idx = lenS
-    while idx > 0:
-      idx -= 1
-      if isFloat(s[:idx + 1]):
-        return idx + 1
-  else:
-    idx = 0
-    while idx < lenS:
-      if isFloat(s[idx:]):
-        return idx
-      idx += 1
-  return 0
 
 def isFloat(string):
   if len(string) == 0 or string[0] == "+": return False
@@ -321,6 +298,5 @@ def NewtonMethod(eq, guess, accuracy, shouldGuessImag, alter = 1, epsilon = 0.00
     
   
   return complex(round(complex(guess).real, accuracy), round(complex(guess).imag, accuracy))
-
 
 
