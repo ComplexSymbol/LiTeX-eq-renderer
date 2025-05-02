@@ -3,9 +3,11 @@
 #include <string>
 #include "LiTeX.cpp"
 
-using namespace std;
-
 int main()
 {
-    Test();
+    std::string equation = "2^{3^{2}}";
+    Render renderEQ = GenerateRender(equation);
+    renderEQ.Print(true);
+
+    return 0;
 }
