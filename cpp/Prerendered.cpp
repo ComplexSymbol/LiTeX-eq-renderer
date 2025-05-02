@@ -2,7 +2,7 @@
 #include <vector>
 #include <string>
 
-const std::unordered_map<std::string, std::vector<short>> prerenderedGlyphs = {
+const std::unordered_map<std::string, std::vector<ushort>> prerenderedGlyphs = {
   { "(", { 0, 124, 130, 257, 10 } },
   { ")", { 0, 257, 130, 124, 10 } },
   { "[", { 0, 511, 0, 10 } },

@@ -45,8 +45,6 @@ class Render {
 // Overlaps b over a at (x, y) and ORs all values.
 // Original 'a' dimensions are returned. All values that do not overlap (hanging off) are ignored.
 Render mergeRenders(Render a, Render b, ubyte x, ubyte y) {
-    std::cout << "X: " << int(x) << " Y: " << int(y);
-    std::cout << " aSize: " << a.bitmap.size() << " bSize: " << b.bitmap.size();
     // Loop from x to min(x + b.bitmap.size, a.bitmap.size)
 
     // Why min? Because if x + b.bitmap.size > a.bitmap.size, 
@@ -56,18 +54,8 @@ Render mergeRenders(Render a, Render b, ubyte x, ubyte y) {
     // aren't modified, so we don't have to loop over them.
     ull mask = (a.height >= 64) ? ~0ull : ((1ull << a.height) - 1ull); // careful if height == 64
     ubyte stop = min(x + b.bitmap.size(), a.bitmap.size());
-    std::cout << "; Stopping after: " << int(stop) << std::endl;
 
     for (ubyte col = x; col < stop; col++) {
-        //std::cout << "COL " << int(col) << ": " << a.bitmap[col] << " ORS WITH: " << ((b.bitmap[col - x] << y) & mask) << std::endl;
-        
-        std::cout << "COL=" << int(col)
-          << ", a.bitmap[col]=" << std::bitset<64>(a.bitmap[col])
-          << ", b.bitmap[col-" << int(x) << "]=" << std::bitset<64>(b.bitmap[col - x])
-          << ", shift y=" << int(y)
-          << ", result=" << std::bitset<64>((b.bitmap[col - x] << y) & mask)
-          << std::endl;
-        
         a.bitmap[col] |= (b.bitmap[col - x] << min(63, y)) & mask;
     }
 
@@ -81,10 +69,6 @@ Render appendRenders(Render a, Render b, ubyte aAlign = 0, ubyte bAlign = 0, uby
     if (a.bitmap.empty()) {
         return b;
     }
-    std::cout << "A A A" << std::endl;
-    a.Print();
-    std::cout << "B B B" << std::endl;
-    b.Print();
     
     // Half, rounded down, if they aren't set already.
     if (overlap != 0) {
@@ -95,15 +79,6 @@ Render appendRenders(Render a, Render b, ubyte aAlign = 0, ubyte bAlign = 0, uby
     // Positive diff means b has to move up to match a
     // Negative diff means a has to move up to match b
     byte diff = aAlign - bAlign;
-    
-    std::cout << "Appending: a.height = " << int(a.height)
-              << ", b.height = " << int(b.height)
-              << ", aAlign = " << int(aAlign)
-              << ", bAlign = " << int(bAlign)
-              << ", diff = " << int(diff)
-              << ", overlap = " << int(overlap)
-              << ", overlapFrom = " << int(overlapFrom)
-              << std::endl;
 
     Render canvas = Render(
         std::vector<ull>(a.bitmap.size() + b.bitmap.size(), 0ull), // empty bitmap of a width + b width
@@ -112,8 +87,6 @@ Render appendRenders(Render a, Render b, ubyte aAlign = 0, ubyte bAlign = 0, uby
         max(a.height, overlapFrom + b.height - overlap) : // Find the height when overlapping
         (a.height + max((aAlign - a.height) - (bAlign - b.height), 0) + max(bAlign - aAlign, 0)) // Find the height when aligned
     );
-    std::cout << "EMPTY CANVAS: " << std::endl;
-    canvas.Print();
 
     // Place in bottom left corner, move up if diff requires
     canvas = mergeRenders(canvas, a, 0, diff < 0 ? -diff : 0);
@@ -121,6 +94,5 @@ Render appendRenders(Render a, Render b, ubyte aAlign = 0, ubyte bAlign = 0, uby
     // Place to the right of a, move up if diff requires OR if overlap requires
     canvas = mergeRenders(canvas, b, a.bitmap.size(), (overlap != 0) ? (overlapFrom - overlap) : (diff > 0 ? diff : 0));
 
-    canvas.Print();
     return canvas;
 }

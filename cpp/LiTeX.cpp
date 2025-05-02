@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string> 
 #include <vector>
-#include <chrono>
 #include "RenderEngine.cpp"
 #include "Prerendered.cpp"
 
@@ -9,28 +8,31 @@ typedef unsigned long long ull;
 typedef unsigned char ubyte;
 typedef char byte;
 
-Render ReadGlyph(std::string g, ubyte resizeParenBy = 0, bool absVal = false, bool isExp = false) {
-    std::vector<short> gl = prerenderedGlyphs.at(g);
+Render ReadGlyph(std::string g, byte resizeParenBy = 0, bool absVal = false, bool isExp = false) {
+    std::vector<ushort> gl = prerenderedGlyphs.at(g);
 
     ubyte ht = gl[gl.size() - 1];
     gl.pop_back();
 
     if (resizeParenBy != 0) {
-        short oldCol = gl[absVal ? 1 : (resizeParenBy < 0 ? 1 : (isExp ? 2 : 3))];
-        short& refToCol = gl[absVal ? 1 : (resizeParenBy < 0 ? 1 : (isExp ? 2 : 3))];
-        refToCol &= ~0b11uLL; // Mask out bottom bits for shifting.
-        refToCol >>= resizeParenBy; // Shift to make room for expanded column
-        refToCol |= (1ull << resizeParenBy) - 1; // Expand column
-        refToCol &= ~0b11uLL; // Remove unused expanded column bits.
-        refToCol |= oldCol & 0b11uLL; // Add old bits that were masked out.
+        ubyte indx = absVal ? 1 : (resizeParenBy < 0 ? 1 : (isExp ? 2 : 3));
+        short oldCol = gl[indx];
+        
+        gl[indx] |= 0b11;
+        gl[indx] <<= abs(resizeParenBy);
+        gl[indx] |= oldCol;
+
+        for (ubyte i = 0; i < gl.size(); i++) {
+            if (i != indx) {
+                oldCol = gl[i];
+                gl[i] &= ushort(~0b11);
+                gl[i] <<= abs(resizeParenBy);
+                gl[i] |= oldCol & 0b11;
+            }
+        }
     }
 
-    std::vector<ull> cleanBitmap;
-    cleanBitmap.reserve(gl.size());
-    for (short val : gl) {
-        cleanBitmap.push_back(static_cast<ull>(val) & 0xFFFFull); // mask to prevent junk
-    }
-    return Render(cleanBitmap, ht + resizeParenBy);
+    return Render(std::vector<ull>(gl.begin(), gl.end()), ht + abs(resizeParenBy));
 }
 
 std::string Between(std::string str, ubyte start, char char1, char char2) {
@@ -45,11 +47,14 @@ std::string Between(std::string str, ubyte start, char char1, char char2) {
         }
         else if (str[i] == char2) {
             c2Count++;
-            if (c1Count == c2Count) return str.substr(c1Indx + 1, i - start -  2);
+            if (c1Count == c2Count) return str.substr(c1Indx + 1, i - start - 1 );
         }
     }
 
-    throw new std::invalid_argument("Could not find contents between " + std::string(1, char1) + " and " + std::string(1, char2) + " in " + str + ".");
+    std::cerr << "\033[1;31m";
+    std::cerr << "Could not find contents between " + std::string(1, char1) + " and " + std::string(1, char2) + " in " + str + "." << std::endl;
+    std::cerr << "\033[0m";
+    throw new std::invalid_argument("");
 }
 
 ubyte lastFinishedBarHt = 0;
@@ -77,7 +82,7 @@ Render GenerateRender(std::string eq, bool exp = false) {
             i += ubyte(contents.size()) + 1;
 
             Render renderedConts = GenerateRender(contents, exp);
-            ubyte resizeBy = max(0, renderedConts.height - (exp ? 7 : 10));
+            byte resizeBy = max(0, renderedConts.height - (exp ? 7 : 10));
 
             // Opening parenthesis
             render = appendRenders(render, 
