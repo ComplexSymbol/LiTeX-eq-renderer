@@ -47,8 +47,9 @@ std::string Between(std::string str, ubyte start, char char1, char char2) {
         }
         else if (str[i] == char2) {
             c2Count++;
-            if (c1Count == c2Count) return str.substr(c1Indx + 1, i - start - 1 );
-        }
+            if (c1Count == c2Count) 
+                return std::string(&str[c1Indx + 1], &str[i]);
+            }
     }
 
     std::cerr << "\033[1;31m";

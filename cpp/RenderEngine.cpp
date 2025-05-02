@@ -6,8 +6,8 @@ typedef unsigned long long ull;
 typedef unsigned char ubyte;
 typedef char byte;
 
-inline ubyte max(ubyte a, ubyte b) { return a > b ? a : b; }
-inline ubyte min(ubyte a, ubyte b) { return a < b ? a : b; }
+inline byte max(byte a, byte b) { return a > b ? a : b; }
+inline byte min(byte a, byte b) { return a < b ? a : b; }
 
 class Render {
     public:
@@ -85,7 +85,8 @@ Render appendRenders(Render a, Render b, ubyte aAlign = 0, ubyte bAlign = 0, uby
         //Everything below sets height
         (overlap > 0) ? // Using overlap? 
         max(a.height, overlapFrom + b.height - overlap) : // Find the height when overlapping
-        (a.height + max((aAlign - a.height) - (bAlign - b.height), 0) + max(bAlign - aAlign, 0)) // Find the height when aligned
+        (a.height + max((aAlign - a.height) - (bAlign - b.height), 0) + max(-diff, 0)) // Find the height when aligned
+                       // Possible unsigned math issue in the future?
     );
 
     // Place in bottom left corner, move up if diff requires

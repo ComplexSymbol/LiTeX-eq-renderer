@@ -6,7 +6,7 @@
 
 int main()
 {
-    std::string equation = "(2^{3^{2}})";
+    std::string equation = "2_{2}";
 
     auto start = std::chrono::high_resolution_clock::now();
     Render renderEQ = GenerateRender(equation);
