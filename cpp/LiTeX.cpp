@@ -7,7 +7,7 @@ typedef unsigned long long ull;
 typedef unsigned char ubyte;
 typedef char byte;
 
-std::string Between(std::string str, ubyte start, char char1, char char2) {
+std::string Between(std::string str, ubyte start, char char1, char char2, bool quiet = false) {
     ubyte c1Indx = 0;
     ubyte c1Count = 0;
     ubyte c2Count = 0;
@@ -24,9 +24,11 @@ std::string Between(std::string str, ubyte start, char char1, char char2) {
             }
     }
 
-    std::cerr << "\033[1;31m";
-    std::cerr << "Could not find contents between " + std::string(1, char1) + " and " + std::string(1, char2) + " in " + str + "." << std::endl;
-    std::cerr << "\033[0m";
+    if (!quiet) {
+        std::cerr << "\033[1;31m";
+        std::cerr << "Could not find contents between " + std::string(1, char1) + " and " + std::string(1, char2) + " in " + str + "." << std::endl;
+        std::cerr << "\033[0m";
+    }
     throw new std::invalid_argument("");
 }
 
@@ -41,6 +43,7 @@ Render GenerateRender(std::string eq, bool exp = false) {
     Render render = Render(std::vector<ull>(), ubyte(10));
 
     for (ubyte i = 0; i < ubyte(eq.length()); i++) {
+        // TRIVIAL CHARS ----------------------------------------------------------------------- TRIVIAL CHARS
         if (isdigit(eq[i]) || isalpha(eq[i]) || 
             eq[i] == '/' || eq[i] == '*' || eq[i] == '+' || eq[i] == '-' ||
             eq[i] == '`' || eq[i] == '~' || eq[i] == '.' || eq[i] == '='
@@ -49,6 +52,8 @@ Render GenerateRender(std::string eq, bool exp = false) {
             render = AppendRenders(render, gl, barHeight);
             lastHeight = gl.height;
         }
+
+        // PARENTHESIS AND ABS ----------------------------------------------------------- PARENTHESIS AND ABS
         else if (eq[i] == '(' || eq[i] == '[') {
             char pair[2] = { eq[i], eq[i] == '(' ? ')' : ']' };
             std::string contents = Between(eq, i, pair[0], pair[1]);
@@ -75,6 +80,8 @@ Render GenerateRender(std::string eq, bool exp = false) {
 
             lastHeight = renderedConts.height;
         }
+
+        // EXPONENTS AND SUBSCRIPT --------------------------------------------------- EXPONENTS AND SUBSCRIPT
         else if (eq[i] == '^' or eq[i] == '_') {
             bool isPower = eq[i] == '^';
 
@@ -84,36 +91,55 @@ Render GenerateRender(std::string eq, bool exp = false) {
 
             Render renderedConts = GenerateRender(contents, true);
 
-            if (isPower)
+            if (isPower) {
                 render = AppendRenders(render, renderedConts, 0, 0, exp ? 3 : 4, lastHeight + hang);
+                lastHeight += renderedConts.height - (exp ? 3 : 4);
+            }
             else {
                 render = AppendRenders(render, renderedConts, barHeight, renderedConts.height - (exp ? 2 : 0));
                 barHeight += max(0, renderedConts.height) - barHeight - (exp ? 2 : 0);
                 hang += renderedConts.height - 4;
             }
         }
+        
+        // ESCAPE SEQUENCES ----------------------------------------------------------------- ESCAPE SEQUENCES
         else if (eq[i] == '\\') {
             std::string escSeq = "";
-            try { escSeq = Between(eq, i, '\\', '{'); }
-            catch (std::invalid_argument) { }
-
+            try { escSeq = Between(eq, i, '\\', '{', true); } catch (...) { }
+            
+            // SPECIAL CHARS ----------------------------------- SPECIAL CHARS
             if (escSeq == "") {
                 // Check if escape sequence is special character
                 for (int spec = 0; spec < 5 /* Number of specials */; spec++) {
-                    std::string attempt = escSeq.substr(i + 1, specials[spec].size());
+                    std::string attempt = "";
+                    // If the special length exceedes the length of the string, substr will throw error
+                    try { attempt = escSeq.substr(i + 1, specials[spec].size()); } catch (...) { continue; }
+                    
+                    // Found escape sequence that is a special character, append it
                     if (attempt == specials[spec]) {
-                        Render gl = ReadGlyph(lead + attempt);
+                        escSeq = attempt;
+                        Render gl = ReadGlyph(lead + escSeq);
                         render = AppendRenders(render, gl, barHeight);
                         lastHeight = gl.height;
+                        break;
                     }
                 }
+
+                // No valid special was found
+                if (escSeq == "") {
+                    std::cerr << "\033[1;31m";
+                    std::cerr << "Invalid escape sequence at '" << eq.substr(i) << "'" << std::endl;
+                    std::cerr << "\033[0m";
+                    throw new std::invalid_argument("");
+                }
             }
+            // FRACTIONS ------------------------------------------- FRACTIONS
             else if (escSeq == "frac") {
                 std::cout << "Found fraction!" << std::endl;
                 i += 5; // get index to first brace
                 std::string numer = Between(eq, i, '{', '}');
                 std::string denom = Between(eq, i + numer.size() + 2, '{', '}');
-                i += numer.size() + 2 + denom.size() + 1;
+                i += numer.size() + 2 + denom.size() + 1; // pass expression
 
                 Render rendNumer = GenerateRender(numer, true);
                 Render rendDenom = GenerateRender(denom, true);
@@ -135,12 +161,13 @@ Render GenerateRender(std::string eq, bool exp = false) {
                 barHeight = max(barHeight, rendDenom.height);
                 lastHeight = rendNumer.height + rendDenom.height + 2;
             }
+            // RADICALS -------------------------------------------- RADICALS
             else if (escSeq == "sqrt") {
                 std::cout << "Found radical!" << std::endl;
                 i += 5; // get index to first brace
                 std::string index = Between(eq, i, '{', '}');
                 std::string radicand = Between(eq, i + index.size() + 2, '{', '}');
-                i += index.size() + 2 + radicand.size() + 1;
+                i += index.size() + 2 + radicand.size() + 1; // Pass expression
 
                 Render rendIndex = GenerateRender(index, true);
                 Render rendRadicand = GenerateRender(radicand);

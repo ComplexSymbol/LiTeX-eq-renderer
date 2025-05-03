@@ -6,7 +6,7 @@
 
 int main()
 {
-    std::string equation = "\\sqrt{\\frac{1}{2}}{1}+\\frac{1}{2}";
+    std::string equation = "2^{2}^{2}";
 
     auto start = std::chrono::high_resolution_clock::now();
     Render renderEQ = GenerateRender(equation);
