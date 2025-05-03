@@ -2,38 +2,10 @@
 #include <string> 
 #include <vector>
 #include "RenderEngine.cpp"
-#include "Prerendered.cpp"
 
 typedef unsigned long long ull;
 typedef unsigned char ubyte;
 typedef char byte;
-
-Render ReadGlyph(std::string g, byte resizeParenBy = 0, bool absVal = false, bool isExp = false) {
-    std::vector<ushort> gl = prerenderedGlyphs.at(g);
-
-    ubyte ht = gl[gl.size() - 1];
-    gl.pop_back();
-
-    if (resizeParenBy != 0) {
-        ubyte indx = absVal ? 1 : (resizeParenBy < 0 ? 1 : (isExp ? 2 : 3));
-        short oldCol = gl[indx];
-        
-        gl[indx] |= 0b11;
-        gl[indx] <<= abs(resizeParenBy);
-        gl[indx] |= oldCol;
-
-        for (ubyte i = 0; i < gl.size(); i++) {
-            if (i != indx) {
-                oldCol = gl[i];
-                gl[i] &= ushort(~0b11);
-                gl[i] <<= abs(resizeParenBy);
-                gl[i] |= oldCol & 0b11;
-            }
-        }
-    }
-
-    return Render(std::vector<ull>(gl.begin(), gl.end()), ht + abs(resizeParenBy));
-}
 
 std::string Between(std::string str, ubyte start, char char1, char char2) {
     ubyte c1Indx = 0;
@@ -59,6 +31,7 @@ std::string Between(std::string str, ubyte start, char char1, char char2) {
 }
 
 ubyte lastFinishedBarHt = 0;
+const std::string specials[5] = { "pi", "e", "im", "perm", "comb" };
 Render GenerateRender(std::string eq, bool exp = false) {
     std::string lead = exp ? "^" : "";
     ubyte barHeight = 4;
@@ -72,9 +45,8 @@ Render GenerateRender(std::string eq, bool exp = false) {
             eq[i] == '/' || eq[i] == '*' || eq[i] == '+' || eq[i] == '-' ||
             eq[i] == '`' || eq[i] == '~' || eq[i] == '.' || eq[i] == '='
         ) {
-            std::cout << eq[i] << std::endl;
             Render gl = ReadGlyph(lead + eq[i]);
-            render = appendRenders(render, gl, barHeight);
+            render = AppendRenders(render, gl, barHeight);
             lastHeight = gl.height;
         }
         else if (eq[i] == '(' || eq[i] == '[') {
@@ -86,17 +58,17 @@ Render GenerateRender(std::string eq, bool exp = false) {
             byte resizeBy = max(0, renderedConts.height - (exp ? 7 : 10));
 
             // Opening parenthesis
-            render = appendRenders(render, 
+            render = AppendRenders(render, 
                 ReadGlyph(lead + std::string(1, pair[0]), -resizeBy, pair[0] == '[', exp), 
                 barHeight, lastFinishedBarHt
             );
             barHeight = max(barHeight, lastFinishedBarHt);
 
             // Contents
-            render = appendRenders(render, renderedConts, barHeight, lastFinishedBarHt);
+            render = AppendRenders(render, renderedConts, barHeight, lastFinishedBarHt);
             
             // Closing parenthesis
-            render = appendRenders(render,
+            render = AppendRenders(render,
                 ReadGlyph(lead + std::string(1, pair[1]), resizeBy, pair[0] == '[', exp),
                 barHeight, lastFinishedBarHt
             );
@@ -113,11 +85,91 @@ Render GenerateRender(std::string eq, bool exp = false) {
             Render renderedConts = GenerateRender(contents, true);
 
             if (isPower)
-                render = appendRenders(render, renderedConts, 0, 0, exp ? 3 : 4, lastHeight + hang);
+                render = AppendRenders(render, renderedConts, 0, 0, exp ? 3 : 4, lastHeight + hang);
             else {
-                render = appendRenders(render, renderedConts, barHeight, renderedConts.height - (exp ? 2 : 0));
+                render = AppendRenders(render, renderedConts, barHeight, renderedConts.height - (exp ? 2 : 0));
                 barHeight += max(0, renderedConts.height) - barHeight - (exp ? 2 : 0);
                 hang += renderedConts.height - 4;
+            }
+        }
+        else if (eq[i] == '\\') {
+            std::string escSeq = "";
+            try { escSeq = Between(eq, i, '\\', '{'); }
+            catch (std::invalid_argument) { }
+
+            if (escSeq == "") {
+                // Check if escape sequence is special character
+                for (int spec = 0; spec < 5 /* Number of specials */; spec++) {
+                    std::string attempt = escSeq.substr(i + 1, specials[spec].size());
+                    if (attempt == specials[spec]) {
+                        Render gl = ReadGlyph(lead + attempt);
+                        render = AppendRenders(render, gl, barHeight);
+                        lastHeight = gl.height;
+                    }
+                }
+            }
+            else if (escSeq == "frac") {
+                std::cout << "Found fraction!" << std::endl;
+                i += 5; // get index to first brace
+                std::string numer = Between(eq, i, '{', '}');
+                std::string denom = Between(eq, i + numer.size() + 2, '{', '}');
+                i += numer.size() + 2 + denom.size() + 1;
+
+                Render rendNumer = GenerateRender(numer, true);
+                Render rendDenom = GenerateRender(denom, true);
+                // Positive shift means denom moves, negative shift means numer moves
+                short shift = (rendNumer.bitmap.size() - rendDenom.bitmap.size()) / 2;
+
+                Render fraction = Render(
+                    std::vector<ull>(max(rendNumer.bitmap.size(), rendDenom.bitmap.size()) + 2), 
+                    2 + rendNumer.height + rendDenom.height
+                );
+                fraction = MergeRenders(fraction, rendNumer, 1 - (shift < 0 ? shift : 0), rendDenom.height + 2);
+                fraction = MergeRenders(fraction, rendDenom, 1 + (shift > 0 ? shift : 0), 0);
+                
+                Render bar = Render(std::vector<ull>(max(rendNumer.bitmap.size(), rendDenom.bitmap.size()) + 2, 1), 1);
+                bar.bitmap[0] = 0;
+                fraction = MergeRenders(fraction, bar, 0, rendDenom.height);
+                
+                render = AppendRenders(render, fraction, barHeight, rendDenom.height);
+                barHeight = max(barHeight, rendDenom.height);
+                lastHeight = rendNumer.height + rendDenom.height + 2;
+            }
+            else if (escSeq == "sqrt") {
+                std::cout << "Found radical!" << std::endl;
+                i += 5; // get index to first brace
+                std::string index = Between(eq, i, '{', '}');
+                std::string radicand = Between(eq, i + index.size() + 2, '{', '}');
+                i += index.size() + 2 + radicand.size() + 1;
+
+                Render rendIndex = GenerateRender(index, true);
+                Render rendRadicand = GenerateRender(radicand);
+
+                Render radical = Render(
+                    std::vector<ull>(5 + rendIndex.bitmap.size() + rendRadicand.bitmap.size(), 0),
+                    2 + rendRadicand.height + max(0, rendIndex.height + 2 - rendRadicand.height)
+                );
+                Render stem = Render(std::vector<ull>({
+                    (1ull << (rendRadicand.height/2 + (rendRadicand.height % 2 != 0))) - 1,
+                    ((1ull << (rendRadicand.height / 2)) - 1) << (rendRadicand.height / 2)
+                }), radical.height - 1);
+
+                // Place square root "hook"
+                radical = MergeRenders(radical, ReadGlyph("rad"), rendIndex.bitmap.size() - 2, 0);
+                // Place stem
+                radical = MergeRenders(radical, stem, rendIndex.bitmap.size() + 1, 0);
+                // Place bar 
+                radical = MergeRenders(radical, Render(std::vector<ull>(rendRadicand.bitmap.size() + 3, 1ull), 1), rendIndex.bitmap.size() + 2, rendRadicand.height);
+                // Place end marker
+                radical = MergeRenders(radical, Render(std::vector<ull>(1, 0b11ull), 2), rendRadicand.bitmap.size() + rendIndex.bitmap.size() + 4, rendRadicand.height - 2);
+                // Place index
+                radical = MergeRenders(radical, rendIndex, 0, 4);
+                // Place contents
+                radical = MergeRenders(radical, rendRadicand, rendIndex.bitmap.size() + 3, 0);
+                
+                render = AppendRenders(render, radical, barHeight, lastFinishedBarHt);
+                barHeight = max(barHeight, lastFinishedBarHt);
+                lastHeight = radical.height + hang;
             }
         }
     }

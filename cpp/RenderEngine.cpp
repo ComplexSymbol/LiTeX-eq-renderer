@@ -1,6 +1,7 @@
 #include <vector>
 #include <iostream>
 #include <bitset>
+#include "Prerendered.cpp"
 
 typedef unsigned long long ull;
 typedef unsigned char ubyte;
@@ -31,9 +32,9 @@ class Render {
         }
 
         for (ubyte y = height; y > 0; y--) { // Print top to bottom
-            for (ubyte x = 0; x < ubyte(bitmap.size()); x++) {
+            for (short x = 0; x < bitmap.size(); x++) {
                 if (prettyPrint) 
-                    std::cout << (((bitmap[x] >> (y - 1)) & 1) ? "██" : "  ");
+                    std::cout << (((bitmap[x] >> (y - 1)) & 1) ? "██" : "[]");
                 else 
                     std::cout << (((bitmap[x] >> (y - 1)) & 1) ? "1" : "0");
             }
@@ -44,7 +45,7 @@ class Render {
 
 // Overlaps b over a at (x, y) and ORs all values.
 // Original 'a' dimensions are returned. All values that do not overlap (hanging off) are ignored.
-Render mergeRenders(Render a, Render b, ubyte x, ubyte y) {
+Render MergeRenders(Render a, Render b, ubyte x, ubyte y) {
     // Loop from x to min(x + b.bitmap.size, a.bitmap.size)
 
     // Why min? Because if x + b.bitmap.size > a.bitmap.size, 
@@ -53,9 +54,9 @@ Render mergeRenders(Render a, Render b, ubyte x, ubyte y) {
     // Why not iterate from a to a.bitmap.size()? Because portions between 0 and x
     // aren't modified, so we don't have to loop over them.
     ull mask = (a.height >= 64) ? ~0ull : ((1ull << a.height) - 1ull); // careful if height == 64
-    ubyte stop = min(x + b.bitmap.size(), a.bitmap.size());
+    short stop = min(x + b.bitmap.size(), a.bitmap.size());
 
-    for (ubyte col = x; col < stop; col++) {
+    for (short col = x; col < stop; col++) {
         a.bitmap[col] |= (b.bitmap[col - x] << min(63, y)) & mask;
     }
 
@@ -65,20 +66,28 @@ Render mergeRenders(Render a, Render b, ubyte x, ubyte y) {
 // Appends b to a. Aligns aAlign and bAlign y values so they are on the same level.
 // Returns a larger bitmap.
 // `a` gets appended with `b` and (aligns `a` and `b` OR overlaps `b` by `overlap` starting at height `overlapFrom`)
-Render appendRenders(Render a, Render b, ubyte aAlign = 0, ubyte bAlign = 0, ubyte overlap = 0, ubyte overlapFrom = 0) {
+Render AppendRenders(Render a, Render b, ubyte aAlign = 0, ubyte bAlign = 0, ubyte overlap = 0, ubyte overlapFrom = 0) {
     if (a.bitmap.empty()) {
         return b;
     }
     
     // Half, rounded down, if they aren't set already.
-    if (overlap != 0) {
-        aAlign = aAlign == 0 ? b.height / 2 - 1 : aAlign;
-        bAlign = bAlign == 0 ? b.height / 2 - 1 : bAlign;
+    if (overlap == 0) {
+        aAlign = aAlign == 0 ? ((a.height / 2) - 1) : aAlign;
+        bAlign = bAlign == 0 ? ((b.height / 2) - 1) : bAlign;
     }
-    
+
     // Positive diff means b has to move up to match a
     // Negative diff means a has to move up to match b
     byte diff = aAlign - bAlign;
+
+    std::cout << "AppendRenders ARGS: " 
+        << "aAlign: " << int(aAlign)
+        << ", bAlign: " << int(bAlign)
+        << ", overlap: " << int(overlap)
+        << ", overlapFrom: " << int(overlapFrom)
+        << ", diff: " << int(diff)
+        << std::endl;
 
     Render canvas = Render(
         std::vector<ull>(a.bitmap.size() + b.bitmap.size(), 0ull), // empty bitmap of a width + b width
@@ -86,14 +95,41 @@ Render appendRenders(Render a, Render b, ubyte aAlign = 0, ubyte bAlign = 0, uby
         (overlap > 0) ? // Using overlap? 
         max(a.height, overlapFrom + b.height - overlap) : // Find the height when overlapping
         (a.height + max((aAlign - a.height) - (bAlign - b.height), 0) + max(-diff, 0)) // Find the height when aligned
-                       // Possible unsigned math issue in the future?
+                       // Possible unsigned math issue in the future`?
     );
 
     // Place in bottom left corner, move up if diff requires
-    canvas = mergeRenders(canvas, a, 0, diff < 0 ? -diff : 0);
+    canvas = MergeRenders(canvas, a, 0, diff < 0 ? -diff : 0);
 
     // Place to the right of a, move up if diff requires OR if overlap requires
-    canvas = mergeRenders(canvas, b, a.bitmap.size(), (overlap != 0) ? (overlapFrom - overlap) : (diff > 0 ? diff : 0));
+    canvas = MergeRenders(canvas, b, a.bitmap.size(), (overlap != 0) ? (overlapFrom - overlap) : (diff > 0 ? diff : 0));
 
     return canvas;
+}
+
+Render ReadGlyph(std::string g, byte resizeParenBy = 0, bool absVal = false, bool isExp = false) {
+    std::vector<ushort> gl = prerenderedGlyphs.at(g);
+
+    ubyte ht = gl[gl.size() - 1];
+    gl.pop_back();
+
+    if (resizeParenBy != 0) {
+        ubyte indx = absVal ? 1 : (resizeParenBy < 0 ? 1 : (isExp ? 2 : 3));
+        short oldCol = gl[indx];
+        
+        gl[indx] |= 0b11;
+        gl[indx] <<= abs(resizeParenBy);
+        gl[indx] |= oldCol;
+
+        for (ubyte i = 0; i < gl.size(); i++) {
+            if (i != indx) {
+                oldCol = gl[i];
+                gl[i] &= ushort(~0b11);
+                gl[i] <<= abs(resizeParenBy);
+                gl[i] |= oldCol & 0b11;
+            }
+        }
+    }
+
+    return Render(std::vector<ull>(gl.begin(), gl.end()), ht + abs(resizeParenBy));
 }
