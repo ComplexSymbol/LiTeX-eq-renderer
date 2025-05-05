@@ -3,21 +3,25 @@
 #include <Arduino.h>
 #include <string>
 
-extern inline char max(char a, char b);
-extern inline char min(char a, char b);
+typedef unsigned long long ull;
+typedef unsigned char ubyte;
+typedef signed char sbyte;
+
+extern inline sbyte max(sbyte a, sbyte b);
+extern inline sbyte min(sbyte a, sbyte b);
 
 class Render {
     public:
 
-    std::vector<unsigned long long> bitmap;
-    unsigned char height;
+    std::vector<ull> bitmap;
+    ubyte height;
 
-    Render(std::vector<unsigned long long> bmap, unsigned char ht);
+    Render(std::vector<ull> bmap, ubyte ht);
     void Print(bool prettyPrint = false);
 };
-extern Render MergeRenders(Render a, Render b, unsigned char x, unsigned char y);
-extern Render AppendRenders(Render a, Render b, unsigned char aAlign = 0, unsigned char bAlign = 0, unsigned char overlap = 0, unsigned char overlapFrom = 0);
-extern Render ReadGlyph(std::string g, byte resizeParenBy = 0, bool absVal = false, bool isExp = false);
+extern Render MergeRenders(Render a, Render b, ubyte x, ubyte y);
+extern Render AppendRenders(Render a, Render b, ubyte aAlign = 0, ubyte bAlign = 0, ubyte overlap = 0, ubyte overlapFrom = 0);
+extern Render ReadGlyph(std::string g, sbyte resizeParenBy = 0, bool absVal = false, bool isExp = false);
 
 
 #endif

@@ -1,5 +1,7 @@
 #ifndef _PRERENDERED_H
 #define _PRERENDERED_H
+
+#include <LiTeX.h>
 #include <Arduino.h>
 #include <string>
 

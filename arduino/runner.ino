@@ -1,23 +1,33 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <chrono>
+
 #include <LiTeX.h>
 #include <RenderEngine.h>
+#include <DisplaySPI.h>
 
-std::string equation = "2^{2}^{2}";
+std::string equation = "1 + \\e^{2\\pi\\im} - 3\\sqrt{2}{\\frac{sin(4)}{3}}";
 
-void setup() {
+void setup() {    
+    delay(3000);
+    
+    std::cout.flush();
+    std::cout << "INIT INIT INIT" << std::endl;  
 }
 
 void loop() {
-    auto start = std::chrono::high_resolution_clock::now();
+    std::cout << "LOOP LOOP LOOP" << std::endl;
+    
+    uint start = micros();
     Render renderEQ = GenerateRender(equation);
-    auto finish = std::chrono::high_resolution_clock::now();
+    uint finish = micros();
 
     renderEQ.Print(true);
 
-    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(finish-start);
-    std::cout << "Generated render in: " << nanoseconds.count() << "ns\n";
+    std::cout << "Generated render in: " << (finish - start) << "µs\n";
+
+    delay(1000);
+    std::cout << "EXITING..." << std::endl;
+    exit(0);
     return;
 }

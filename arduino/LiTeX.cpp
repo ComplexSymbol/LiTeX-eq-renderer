@@ -1,12 +1,15 @@
+#ifdef __INTELLISENSE__
+    #pragma diag_suppress 1696
+#endif
 #include <LiTeX.h>
+#ifdef __INTELLISENSE__
+    #pragma diag_default 1696
+#endif
+
 #include <iostream>
 #include <string> 
 #include <vector>
 #include "RenderEngine.h"
-
-typedef unsigned long long ull;
-typedef unsigned char ubyte;
-//typedef char byte;
 
 std::string Between(std::string str, ubyte start, char char1, char char2, bool quiet) {
     ubyte c1Indx = 0;
@@ -22,36 +25,42 @@ std::string Between(std::string str, ubyte start, char char1, char char2, bool q
             c2Count++;
             if (c1Count == c2Count) 
                 return std::string(&str[c1Indx + 1], &str[i]);
-            }
+        }
     }
 
     if (!quiet) {
-        std::cerr << "\033[1;31m";
-        std::cerr << "Could not find contents between " + std::string(1, char1) + " and " + std::string(1, char2) + " in " + str + "." << std::endl;
-        std::cerr << "\033[0m";
+        std::cerr << "COULD NOT FIND CONTENTS BETWEEN " + std::string(1, char1) + " AND " + std::string(1, char2) + " IN " + str + "." << std::endl;
     }
-    throw new std::invalid_argument("");
+    return "ERROR";
 }
 
 ubyte lastFinishedBarHt = 0;
 const std::string specials[5] = { "pi", "e", "im", "perm", "comb" };
 Render GenerateRender(std::string eq, bool exp) {
+    //std::cout << "Generating render for eq '" << eq << "'" << std::endl;
+
     std::string lead = exp ? "^" : "";
-    ubyte barHeight = 4;
+    ubyte barHeight = exp ? 2 : 4;
     ubyte hang = 0;
     ubyte lastHeight = 0;
 
     Render render = Render(std::vector<ull>(), ubyte(10));
 
     for (ubyte i = 0; i < ubyte(eq.length()); i++) {
+        //std::cout << "Iterating... i: " << int(i) << std::endl;
+
+        if (eq[i] == ' ')
+            continue; 
+
         // TRIVIAL CHARS ----------------------------------------------------------------------- TRIVIAL CHARS
         if (isdigit(eq[i]) || isalpha(eq[i]) || 
             eq[i] == '/' || eq[i] == '*' || eq[i] == '+' || eq[i] == '-' ||
             eq[i] == '`' || eq[i] == '~' || eq[i] == '.' || eq[i] == '='
         ) {
+            //std::cout << "Appending character " << eq[i] << std::endl;
             Render gl = ReadGlyph(lead + eq[i]);
             render = AppendRenders(render, gl, barHeight);
-            lastHeight = gl.height;
+            lastHeight = gl.height + hang;
         }
 
         // PARENTHESIS AND ABS ----------------------------------------------------------- PARENTHESIS AND ABS
@@ -59,9 +68,11 @@ Render GenerateRender(std::string eq, bool exp) {
             char pair[2] = { eq[i], eq[i] == '(' ? ')' : ']' };
             std::string contents = Between(eq, i, pair[0], pair[1]);
             i += ubyte(contents.size()) + 1;
+            
+            //std::cout << "Found parenthesis with contents: '" << contents << "'" << std::endl;
 
             Render renderedConts = GenerateRender(contents, exp);
-            byte resizeBy = max(0, renderedConts.height - (exp ? 7 : 10));
+            signed char resizeBy = max(0, renderedConts.height - (exp ? 7 : 10));
 
             // Opening parenthesis
             render = AppendRenders(render, 
@@ -79,7 +90,7 @@ Render GenerateRender(std::string eq, bool exp) {
                 barHeight, lastFinishedBarHt
             );
 
-            lastHeight = renderedConts.height;
+            lastHeight = renderedConts.height + hang;
         }
 
         // EXPONENTS AND SUBSCRIPT --------------------------------------------------- EXPONENTS AND SUBSCRIPT
@@ -87,14 +98,14 @@ Render GenerateRender(std::string eq, bool exp) {
             bool isPower = eq[i] == '^';
 
             std::string contents = Between(eq, i, '{', '}');
-            std::cout << "Found exponent with contents " << contents << std::endl;
+            //std::cout << "Found exponent with contents " << contents << std::endl;
             i += ubyte(contents.size()) + 2;
 
             Render renderedConts = GenerateRender(contents, true);
 
             if (isPower) {
-                render = AppendRenders(render, renderedConts, 0, 0, exp ? 3 : 4, lastHeight + hang);
-                lastHeight += renderedConts.height - (exp ? 3 : 4);
+                render = AppendRenders(render, renderedConts, 0, 0, 4, lastHeight);
+                lastHeight += renderedConts.height - 4;
             }
             else {
                 render = AppendRenders(render, renderedConts, barHeight, renderedConts.height - (exp ? 2 : 0));
@@ -105,38 +116,41 @@ Render GenerateRender(std::string eq, bool exp) {
         
         // ESCAPE SEQUENCES ----------------------------------------------------------------- ESCAPE SEQUENCES
         else if (eq[i] == '\\') {
-            std::string escSeq = "";
-            try { escSeq = Between(eq, i, '\\', '{', true); } catch (...) { }
-            
+            //std::cout << "Found escape sequence... " << std::endl;
+
+            std::string escSeq = Between(eq, i, '\\', '{', true);
+                                                                                                                                // TODO TODO TODO 
+                                                                                                                                // INFINITE LOOP!
             // SPECIAL CHARS ----------------------------------- SPECIAL CHARS
-            if (escSeq == "") {
+            if (escSeq == "ERROR") {
                 // Check if escape sequence is special character
-                for (int spec = 0; spec < 5 /* Number of specials */; spec++) {
+                for (ubyte spec = 0; spec < 5 /* Number of specials */; spec++) {
                     std::string attempt = "";
                     // If the special length exceedes the length of the string, substr will throw error
-                    try { attempt = escSeq.substr(i + 1, specials[spec].size()); } catch (...) { continue; }
-                    
+                    attempt = eq.substr(i + 1, min(eq.size() - i - 1, specials[spec].size()));
+
                     // Found escape sequence that is a special character, append it
                     if (attempt == specials[spec]) {
+                        //std::cout << "Found valid special character attempt: " << attempt << std::endl;
+                        i += specials[spec].size();
                         escSeq = attempt;
                         Render gl = ReadGlyph(lead + escSeq);
+                        
                         render = AppendRenders(render, gl, barHeight);
-                        lastHeight = gl.height;
+                        lastHeight = gl.height + hang;
                         break;
                     }
                 }
 
                 // No valid special was found
-                if (escSeq == "") {
-                    std::cerr << "\033[1;31m";
-                    std::cerr << "Invalid escape sequence at '" << eq.substr(i) << "'" << std::endl;
-                    std::cerr << "\033[0m";
-                    throw new std::invalid_argument("");
+                if (escSeq == "ERROR") {
+                    std::cerr << "INVALID ESCAPE SEQUNCE AT: '" << eq.substr(i) << "'" << std::endl;
+                    return Render(std::vector<ull>(), 0);
                 }
             }
             // FRACTIONS ------------------------------------------- FRACTIONS
             else if (escSeq == "frac") {
-                std::cout << "Found fraction!" << std::endl;
+                //std::cout << "Found fraction!" << std::endl;
                 i += 5; // get index to first brace
                 std::string numer = Between(eq, i, '{', '}');
                 std::string denom = Between(eq, i + numer.size() + 2, '{', '}');
@@ -160,17 +174,18 @@ Render GenerateRender(std::string eq, bool exp) {
                 
                 render = AppendRenders(render, fraction, barHeight, rendDenom.height);
                 barHeight = max(barHeight, rendDenom.height);
-                lastHeight = rendNumer.height + rendDenom.height + 2;
+                lastHeight = fraction.height + (barHeight - rendDenom.height);
             }
             // RADICALS -------------------------------------------- RADICALS
             else if (escSeq == "sqrt") {
-                std::cout << "Found radical!" << std::endl;
+                //std::cout << "Found radical!" << std::endl;
                 i += 5; // get index to first brace
                 std::string index = Between(eq, i, '{', '}');
                 std::string radicand = Between(eq, i + index.size() + 2, '{', '}');
                 i += index.size() + 2 + radicand.size() + 1; // Pass expression
 
                 Render rendIndex = GenerateRender(index, true);
+                if (index == "2") { rendIndex = Render(std::vector<ull>(2, 0), 1); }
                 Render rendRadicand = GenerateRender(radicand);
 
                 Render radical = Render(
@@ -197,8 +212,11 @@ Render GenerateRender(std::string eq, bool exp) {
                 
                 render = AppendRenders(render, radical, barHeight, lastFinishedBarHt);
                 barHeight = max(barHeight, lastFinishedBarHt);
-                lastHeight = radical.height + hang;
+                lastHeight = radical.height + ((unsigned char)barHeight - lastFinishedBarHt);
             }
+        }
+        else {
+            std::cerr << "UNIDENTIFIED CHARACTER: '" << eq[i] << "' AT INDEX " << int(i) << std::endl;
         }
     }
 
