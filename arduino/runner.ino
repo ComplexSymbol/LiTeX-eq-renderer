@@ -6,7 +6,7 @@
 #include <RenderEngine.h>
 #include <DisplaySPI.h>
 
-std::string equation = "1 + \\e^{2\\pi\\im} - 3\\sqrt{2}{\\frac{sin(4)}{3}}";
+std::string equation = "1^{2}";
 
 void setup() {
     setup_SPI();
@@ -16,7 +16,7 @@ void setup() {
     std::cout << "INIT INIT INIT" << std::endl;
 }
 
-void loop() {
+void loop() { 
     std::cout << "LOOP LOOP LOOP" << std::endl;
     
     uint start = micros();
@@ -33,13 +33,11 @@ void loop() {
     software_reset();
     std::cout << "Clearing display...\n" << std::endl;
     clear_display();
-    std::cout << "Invert on...\n" << std::endl;
-    send_command(INVR_ON);
-    delay(3000);
-    std::cout << "Invert off...\n" << std::endl;
-    send_command(INVR_OFF);
+
+    std::cout << "Sending render..." << std::endl;
+    send_render(renderEQ, 5);
   
-    delay(1000);
+    delay(3000);
     std::cout << "EXITING..." << std::endl;
     kill_SPI();
     exit(0);

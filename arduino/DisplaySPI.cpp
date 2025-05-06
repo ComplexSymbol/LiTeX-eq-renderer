@@ -1,6 +1,8 @@
 #include <SPI.h>
+#include <RenderEngine.h>
 #include "DisplaySPI.h"
 #include <iostream>
+#include <bitset>
 
 typedef unsigned char ubyte;
 
@@ -57,7 +59,7 @@ void kill_SPI() { SPI.end(); }
 void send_data(ubyte data) {
     // gain control of the SPI port
     // and configure settings
-    SPI.beginTransaction(SPISettings(100'000, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(SPISettings(100'000, LSBFIRST, SPI_MODE0));
         // data mode
         digitalWrite((int)DC_PIN, HIGH);
         // take the SS pin low to select the chip:
@@ -132,5 +134,29 @@ void clear_display() {
 
         for (ubyte x = 0; x < 132; x++)
             send_data(0x00);
+    }
+}
+
+void send_render(Render render, ubyte k) {
+    render.height += k - (8 * (k / 8)); // Resize render to fit pages
+    k = (8 * (k / 8)); // Set k to nearest multiple of 8 below k
+
+    ushort renderWidth = render.bitmap.size();
+    ull topMask = (0xFFull << (render.height - 8));
+    for (ubyte y = 0; y < render.height; y += 8) {
+        send_command(PAGE_ADDR | ((y + k) / 8));
+        send_command(CLMN_ADR1 | 0x00);
+        send_command(CLMN_ADR2 | 0x00);
+
+        for (ushort x = 0; x < renderWidth; x++) {
+            ull data = (render.bitmap[x] & (topMask >> y));
+            if (render.height - y >= 8)
+                data >>= (render.height - y - 8);
+            else
+                data <<= 8 - (render.height - y);
+
+            send_data(data & 0xFF);
+        }
+        std::cout << std::endl;
     }
 }

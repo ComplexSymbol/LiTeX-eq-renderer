@@ -45,5 +45,6 @@ extern void initialize_display();
 extern void adjust_contrast(ubyte val);
 extern void software_reset();
 extern void clear_display();
+extern void send_render(Render render, ubyte k = 0);
 
 #endif
