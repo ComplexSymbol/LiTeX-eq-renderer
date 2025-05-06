@@ -8,11 +8,12 @@
 
 std::string equation = "1 + \\e^{2\\pi\\im} - 3\\sqrt{2}{\\frac{sin(4)}{3}}";
 
-void setup() {    
-    delay(3000);
+void setup() {
+    setup_SPI();
+    delay(2000);
     
     std::cout.flush();
-    std::cout << "INIT INIT INIT" << std::endl;  
+    std::cout << "INIT INIT INIT" << std::endl;
 }
 
 void loop() {
@@ -24,10 +25,23 @@ void loop() {
 
     renderEQ.Print(true);
 
-    std::cout << "Generated render in: " << (finish - start) << "µs\n";
+    std::cout << "Generated render in: " << (finish - start) << "µs" << std::endl;
 
+    std::cout << "Initializing display...\n" << std::endl;
+    initialize_display();
+    std::cout << "Software reset...\n" << std::endl;
+    software_reset();
+    std::cout << "Clearing display...\n" << std::endl;
+    clear_display();
+    std::cout << "Invert on...\n" << std::endl;
+    send_command(INVR_ON);
+    delay(3000);
+    std::cout << "Invert off...\n" << std::endl;
+    send_command(INVR_OFF);
+  
     delay(1000);
     std::cout << "EXITING..." << std::endl;
+    kill_SPI();
     exit(0);
     return;
 }

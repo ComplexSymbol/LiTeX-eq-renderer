@@ -1,5 +1,6 @@
 #include <SPI.h>
 #include "DisplaySPI.h"
+#include <iostream>
 
 typedef unsigned char ubyte;
 
@@ -34,39 +35,60 @@ const ubyte PAGE_ADDR = 0b10110000;
 const ubyte CLMN_ADR1 = 0b00010000;
 const ubyte CLMN_ADR2 = 0b00000000;
 
+void setup_SPI() {
+    // Deselect display
+    pinMode((int)CS_PIN, OUTPUT);
+    digitalWrite((int)CS_PIN, HIGH);
+
+    // Default to data mode
+    pinMode((int)DC_PIN, OUTPUT);
+    digitalWrite((int)DC_PIN, HIGH);
+
+    // Default reset state
+    pinMode((int)RST_PIN, OUTPUT);
+    digitalWrite((int)RST_PIN, HIGH);
+
+    // Start SPI
+    SPI.begin();
+}
+
+void kill_SPI() { SPI.end(); }
+
 void send_data(ubyte data) {
     // gain control of the SPI port
     // and configure settings
     SPI.beginTransaction(SPISettings(100'000, MSBFIRST, SPI_MODE0));
         // data mode
-        digitalWrite(DC_PIN, HIGH);
+        digitalWrite((int)DC_PIN, HIGH);
         // take the SS pin low to select the chip:
-        digitalWrite(CS_PIN, LOW);
+        digitalWrite((int)CS_PIN, LOW);
         //  send in the address and value via SPI:
-        SPI.transfer(data);
+        SPI.transfer((int)data);
         // take the SS pin high to de-select the chip:
-        digitalWrite(CS_PIN,HIGH);
+        digitalWrite((int)CS_PIN, HIGH);
         // release control of the SPI port
     SPI.endTransaction();
 }
 
 void send_command(ubyte command) {
     SPI.beginTransaction(SPISettings(100'000, MSBFIRST, SPI_MODE0));
-        // command mode
-        digitalWrite(DC_PIN, LOW);
+        digitalWrite((int)DC_PIN, LOW);
+        digitalWrite((int)CS_PIN, LOW);
 
-        digitalWrite(CS_PIN, LOW);
-        SPI.transfer(command);
-        digitalWrite(CS_PIN,HIGH);
+        SPI.transfer((int)command);
+
+        digitalWrite((int)CS_PIN, HIGH);
     SPI.endTransaction();
 }
 
 void hardware_reset() {
-    digitalWrite(RST_PIN, LOW);
+    std::cout << "Resetting... ";
+    digitalWrite((int)RST_PIN, LOW);
     delay(100);
 
-    digitalWrite(RST_PIN, HIGH);
+    digitalWrite((int)RST_PIN, HIGH);
     delay(100);
+    std::cout << "Done!" << std::endl;
 }
 
 void initialize_display() {
