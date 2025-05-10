@@ -1,22 +1,22 @@
 #include <Evaluator.h>
 #include <LiTeX.h>
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <cmath>
 #include <complex>
 #include <string>
-#include <sstream>
 #include <vector>
 #include <map>
 
 typedef unsigned char ubyte;
 typedef signed char sbyte;
-typedef std::complex<double> cmplx;
+typedef std::complex<long double> cmplx;
 
 const cmplx NaN(std::nan("0"), std::nan("0"));
 inline bool isNan(cmplx z) { return z != z; }
 
-sbyte sgn(double val) {
+inline sbyte sgn(long double val) {
     return (0 < val) - (val < 0);
 }
 
@@ -28,8 +28,8 @@ inline std::string CmplxToStr(cmplx z, ubyte prec) {
 
 // PARSE COMPLEX ===================================================================== PARSE COMPLEX
 cmplx ParseComplex(std::string str) {
-    double real = 0;
-    double imag = 0;
+    long double real = 0;
+    long double imag = 0;
     ubyte start = 0;
     std::string reason = "";
 
@@ -91,7 +91,6 @@ ERROR:
 }
 
 // FIND COMPLEX ====================================================================== FIND COMPLEX
-// Avoid slicing and checking with ParseComplex, which is slow
 // Returns complex-parseable string.
 std::string FindCmplx(std::string str, ubyte loc, bool before) {
     ubyte minusCount = 0;
@@ -160,6 +159,7 @@ void AddImpMultTo(std::string& eq) {
     }
 }
 
+// TRIG MAPS AND OPS ================================================================= TRIG MAPS AND OPS
 const std::unordered_map<std::string, ubyte> trigMap = {
     { "sin", 1 },
     { "cos", 2 },
@@ -171,7 +171,6 @@ const std::unordered_map<std::string, ubyte> trigMap = {
     { "cos^{-1}", 8 },
     { "tan^{-1}", 9 },
 };
-const std::vector<std::string> findeableTrigs({ "sin", "cos", "tan", "sec", "csc", "cot", "sin^{-1}", "cos^{-1}", "tan^{-1}" });
 auto operateTrig = [](std::string func, cmplx n) {
     switch (trigMap.at(func)) {
         case 1: return sin(n);
@@ -187,6 +186,7 @@ auto operateTrig = [](std::string func, cmplx n) {
     return NaN;
 };
 
+// REGULAR OPS
 auto operate = [](ubyte op, cmplx a, cmplx b) {
     switch (op) {
         case 0: return a / b;
@@ -197,7 +197,7 @@ auto operate = [](ubyte op, cmplx a, cmplx b) {
     return NaN;
 };
 
-// FIND TRIGS ======================================================================== FIND TRIGS
+// MULTI FIND ======================================================================== MULTI FIND
 std::tuple<std::string, ubyte> FindMultiple(std::string eq, std::vector<std::string> finds) {
     for (ubyte i = 0; i < size(eq); i++) {
         for (ubyte n = 0; n < finds.size(); n++) {
@@ -209,13 +209,38 @@ std::tuple<std::string, ubyte> FindMultiple(std::string eq, std::vector<std::str
     return std::tuple<std::string, ubyte>("", 0xFF);
 }
 
+// ADDITIONAL MATH FUNCS ============================================================= ADDITIONAL MATH FUNCS
+static const cmplx gamma(const cmplx &z) {
+    static const long double g = 8.0;
+    static const long double p[] = {
+        0.9999999999999999298L,
+        1975.3739023578852322L,
+        -4397.3823927922428918L,
+        3462.6328459862717019L,
+        -1156.9851431631167820L,
+        154.53815050252775060L,
+        -6.2536716123689161798L,
+        0.034642762454736807441L,
+        -7.4776171974442977377e-7L,
+        6.3041253821852264261e-8L,
+        -2.7405717035683877489e-8L,
+        4.0486948817567609101e-9L 
+    };
+
+    cmplx x = p[0];
+    for (ubyte i = 1; i < sizeof(p) / sizeof(p[0]); ++i)
+        x += p[i] / (z + static_cast<long double>(i));
+
+    cmplx t = z + g - 0.5L;
+    return std::pow(2 * M_PI, 0.5L) * std::pow(t, z - 0.5L) * std::exp(-t) * x;
+}
 
 // EVALUATE ========================================================================== EVALUATE
 cmplx Evaluate(std::string eq) {
     std::string reason = "";
-{ // Scope so goto ERROR will not bypass variable initialization
+{ // Scope so that 'goto ERROR' will not bypass variable initialization
     
-    // SETUP EQUATION ==================================================== SETUP EQUATION
+    // SETUP EQUATION
     {   cmplx test; // Is eq a number? (Scope so test is del)
         std::cout << "Testing whether eq is complex..." << std::endl;
         if (!isNan(test = ParseComplex(eq))) return test;   }
@@ -228,7 +253,7 @@ cmplx Evaluate(std::string eq) {
  /* TRIGONOMETRIC FUNCTIONS */ {
         std::cout << "Finding trig functions..." << std::endl;
         std::tuple<std::string, ubyte> loc;
-        while((loc = FindMultiple(eq, findeableTrigs)) != std::tuple<std::string, ubyte>("", 0xFF)) {
+        while((loc = FindMultiple(eq, std::vector<std::string>({ "sin", "cos", "tan", "sec", "csc", "cot", "sin^{-1}", "cos^{-1}", "tan^{-1}" }))) != std::tuple<std::string, ubyte>("", 0xFF)) {
             std::cout << "Found trig function " << std::get<0>(loc) << std::endl;
             std::string contents = Between(eq, std::get<1>(loc) + std::get<0>(loc).size(), '(', ')');
             
@@ -294,10 +319,23 @@ cmplx Evaluate(std::string eq) {
     }
 
     loc = -1;
-    std::tuple<std::string, ubyte> locPermComb;
-    while ((locPermComb = FindMultiple(eq, std::vector<std::string>({"\\perm", "\\comb"}))) != std::tuple<std::string, ubyte>("", 0xFF)) {
-        // Implicit multiplication will make it ...*\\perm*...
+    std::tuple<std::string, ubyte> locFunc;
+    while ((locFunc = FindMultiple(eq, std::vector<std::string>({"\\perm", "\\comb"}))) != std::tuple<std::string, ubyte>("", 0xFF)) {
+        // Implicit multiplication will make it ...*\perm*...
+        std::string n = FindCmplx(eq, std::get<1>(locFunc) - 1, true);
+        std::string r = FindCmplx(eq, std::get<1>(locFunc) + 5, false);
+        cmplx Nparsed = ParseComplex(n);
+        cmplx rParsed = ParseComplex(n);
 
+        cmplx permute = gamma(Nparsed) / (gamma(Nparsed - rParsed));
+        eq.erase(std::get<1>(locFunc) - n.size() - 1, n.size() + 7 + r.size());
+        eq.insert(std::get<1>(locFunc) - n.size() - 1,
+            CmplxToStr(
+                std::get<0>(locFunc) == "\\perm" 
+                ? permute
+                : permute / gamma(rParsed)
+            )
+        );
     }
 
     // OPERATORS ========================================================= OPERATORS
