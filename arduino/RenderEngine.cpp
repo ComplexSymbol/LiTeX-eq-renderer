@@ -28,7 +28,7 @@ void Render::Print(bool prettyPrint) {
     for (ubyte y = height; y > 0; y--) { // Print top to bottom
         for (unsigned short x = 0; x < bitmap.size(); x++) {
             if (prettyPrint) 
-                std::cout << (((bitmap[x] >> (y - 1)) & 1) ? "██" : "  ");
+                std::cout << (((bitmap[x] >> (y - 1)) & 1) ? "██" : "[]");
             else 
                 std::cout << (((bitmap[x] >> (y - 1)) & 1) ? "1" : "0");
         }

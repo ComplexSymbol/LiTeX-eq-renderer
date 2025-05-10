@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 
+#include <Evaluator.h>
 #include <LiTeX.h>
 #include <RenderEngine.h>
 #include <DisplaySPI.h>
@@ -22,10 +23,16 @@ void loop() {
     uint start = micros();
     Render renderEQ = GenerateRender(equation);
     uint finish = micros();
-
     renderEQ.Print(true);
 
     std::cout << "Generated render in: " << (finish - start) << "µs" << std::endl;
+
+    start = micros();
+    cmplx ans = Evaluate(equation);
+    finish = micros();
+    std::cout << "ANS: " << CmplxToStr(ans) << std::endl;
+    
+    std::cout << "Evaluated in: " << (finish - start) << "µs" << std::endl;
 
     std::cout << "Initializing display...\n" << std::endl;
     initialize_display();
@@ -35,7 +42,7 @@ void loop() {
     clear_display();
 
     std::cout << "Sending render..." << std::endl;
-    send_render(renderEQ, 5);
+    send_render(renderEQ);
   
     delay(3000);
     std::cout << "EXITING..." << std::endl;

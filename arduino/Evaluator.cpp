@@ -1,9 +1,13 @@
+#include <Evaluator.h>
+#include <LiTeX.h>
 #include <iostream>
+#include <iomanip>
 #include <cmath>
 #include <complex>
 #include <string>
+#include <sstream>
 #include <vector>
-#include "LiTeX.cpp"
+#include <map>
 
 typedef unsigned char ubyte;
 typedef signed char sbyte;
@@ -16,10 +20,10 @@ sbyte sgn(double val) {
     return (0 < val) - (val < 0);
 }
 
-inline std::string CmplxToStr(cmplx z) {
+inline std::string CmplxToStr(cmplx z, ubyte prec) {
     return (z.imag() == 0 || z.real() == 0)
-         ? (std::stringstream() << (z.imag() == 0 ? z.real() : z.imag()) << (z.imag() == 0 ? "" : "i")).str()
-         : ("(" + (std::stringstream() << z.real()).str() + (sgn(z.imag()) >= 0 ? "+" : "") + (std::stringstream() << z.imag()).str() + "i)");
+         ? (std::stringstream() << std::setprecision(prec) << (z.imag() == 0 ? z.real() : z.imag()) << (z.imag() == 0 ? "" : "i")).str()
+         : ("(" + (std::stringstream() << std::setprecision(prec) << z.real()).str() + (sgn(z.imag()) >= 0 ? "+" : "") + (std::stringstream() << z.imag()).str() + "i)");
 }
 
 // PARSE COMPLEX ===================================================================== PARSE COMPLEX
@@ -156,19 +160,55 @@ void AddImpMultTo(std::string& eq) {
     }
 }
 
-auto operate = [](ubyte op, cmplx a, cmplx b) {
-    switch (op) {
-        case 0:
-            return a / b;
-        case 1:
-            return a * b;
-        case 2:
-            return a - b;
-        case 3:
-            return a + b;
+const std::unordered_map<std::string, ubyte> trigMap = {
+    { "sin", 1 },
+    { "cos", 2 },
+    { "tan", 3 },
+    { "sec", 4 },
+    { "csc", 5 },
+    { "cot", 6 },
+    { "sin^{-1}", 7 },
+    { "cos^{-1}", 8 },
+    { "tan^{-1}", 9 },
+};
+const std::vector<std::string> findeableTrigs({ "sin", "cos", "tan", "sec", "csc", "cot", "sin^{-1}", "cos^{-1}", "tan^{-1}" });
+auto operateTrig = [](std::string func, cmplx n) {
+    switch (trigMap.at(func)) {
+        case 1: return sin(n);
+        case 2: return cos(n);
+        case 3: return tan(n);
+        case 4: return cmplx(1,0) / sin(n);
+        case 5: return cmplx(1,0) / cos(n);
+        case 6: return cmplx(1,0) / tan(n);
+        case 7: return asin(n);
+        case 8: return acos(n);
+        case 9: return atan(n);
     }
     return NaN;
 };
+
+auto operate = [](ubyte op, cmplx a, cmplx b) {
+    switch (op) {
+        case 0: return a / b;
+        case 1: return a * b;
+        case 2: return a - b;
+        case 3: return a + b;
+    }
+    return NaN;
+};
+
+// FIND TRIGS ======================================================================== FIND TRIGS
+std::tuple<std::string, ubyte> FindMultiple(std::string eq, std::vector<std::string> finds) {
+    for (ubyte i = 0; i < size(eq); i++) {
+        for (ubyte n = 0; n < finds.size(); n++) {
+            if (eq.substr(i, finds[n].size()) == finds[n])
+                return std::tuple<std::string, ubyte>(finds[n], i);
+        }
+    }
+    std::cerr << "                                                    >>> COULD NOT FIND TRIG IN EQ: '" << eq << "'" << std::endl;
+    return std::tuple<std::string, ubyte>("", 0xFF);
+}
+
 
 // EVALUATE ========================================================================== EVALUATE
 cmplx Evaluate(std::string eq) {
@@ -177,12 +217,88 @@ cmplx Evaluate(std::string eq) {
     
     // SETUP EQUATION ==================================================== SETUP EQUATION
     {   cmplx test; // Is eq a number? (Scope so test is del)
+        std::cout << "Testing whether eq is complex..." << std::endl;
         if (!isNan(test = ParseComplex(eq))) return test;   }
 
     AddImpMultTo(eq);
     
     // ` is placeholder character for renderer.
     if (eq.find('`') != std::string::npos) { reason = "Equation has placeholders"; goto ERROR; }
+    
+ /* TRIGONOMETRIC FUNCTIONS */ {
+        std::cout << "Finding trig functions..." << std::endl;
+        std::tuple<std::string, ubyte> loc;
+        while((loc = FindMultiple(eq, findeableTrigs)) != std::tuple<std::string, ubyte>("", 0xFF)) {
+            std::cout << "Found trig function " << std::get<0>(loc) << std::endl;
+            std::string contents = Between(eq, std::get<1>(loc) + std::get<0>(loc).size(), '(', ')');
+            
+            eq.erase(std::get<1>(loc), std::get<0>(loc).size() + contents.size() + 2);
+            eq.insert(std::get<1>(loc), CmplxToStr(operateTrig(std::get<0>(loc), Evaluate(contents))));
+        }
+    } // Scope so loc is freed. (I want to change type of loc from tuple -> size_t)
+
+    // LOGARITHMS
+    size_t loc = -1;
+    while((loc = eq.find("log")) != std::string::npos) {
+        std::string base = Between(eq, loc + 4, '{', '}');
+        std::string contents = Between(eq, loc + base.size() + 6, '(', ')');
+
+        eq.erase(loc, base.size() + contents.size() + 8);
+        eq.insert(loc, CmplxToStr(log(Evaluate(contents)) / log(Evaluate(base))));
+        // Use change-of-base formula (inefficient, but too lazy to write my own variable base thing)
+    }
+
+    // PARENTHESIS
+    loc = -1;
+    while ((loc = eq.find('(', loc + 1)) != std::string::npos) {
+        std::string contents = Between(eq, loc, '(', ')');
+        std::cout << "Found parenthesis with contents: " << contents << std::endl;
+        
+        cmplx toRepl = ParseComplex("(" + contents + ")");
+        if (isNan(toRepl)) toRepl = Evaluate(contents);
+
+        eq.erase(loc, contents.size() + 2);
+        eq.insert(loc, CmplxToStr(toRepl));
+    }
+    
+    // RADICALS
+    loc = -1;
+    while ((loc = eq.find("\\sqrt", loc + 1)) != std::string::npos) {
+        std::string nth = Between(eq, loc + 5, '{', '}');
+        std::string root = Between(eq, loc + 7 + nth.size(), '{', '}');
+
+        eq.erase(loc, nth.size() + 7 + root.size());
+        eq.insert(loc, CmplxToStr(pow(Evaluate(root), cmplx(1, 0) / Evaluate(nth))));
+    }
+
+    // FRACTIONS
+    loc = -1;
+    while ((loc = eq.find("\\frac", loc + 1)) != std::string::npos) {
+        std::string numer = Between(eq, loc + 5, '{', '}');
+        std::string denom = Between(eq, loc + 7 + numer.size(), '{', '}');
+
+        eq.erase(loc, numer.size() + 7 + denom.size());
+        eq.insert(loc, CmplxToStr(Evaluate(numer) / Evaluate(denom)));
+    }
+
+    // EXPONENTS
+    loc = -1;
+    while ((loc = eq.find('^', loc + 1)) != std::string::npos) {
+        std::string exp = Between(eq, loc + 1, '{', '}');
+        std::string base = FindCmplx(eq, loc, true);
+        std::cout << "Found exponent with base " << base << " and exponent " << exp << std::endl;
+
+        eq.erase(loc - base.size(), base.size() + 3 + exp.size());
+        eq.insert(loc - base.size(), 
+            CmplxToStr(std::pow(ParseComplex(base), Evaluate(exp))));
+    }
+
+    loc = -1;
+    std::tuple<std::string, ubyte> locPermComb;
+    while ((locPermComb = FindMultiple(eq, std::vector<std::string>({"\\perm", "\\comb"}))) != std::tuple<std::string, ubyte>("", 0xFF)) {
+        // Implicit multiplication will make it ...*\\perm*...
+
+    }
 
     // OPERATORS ========================================================= OPERATORS
     std::cout << "Finding operators..." << std::endl;

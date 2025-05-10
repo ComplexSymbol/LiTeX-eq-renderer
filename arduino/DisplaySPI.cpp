@@ -59,7 +59,7 @@ void kill_SPI() { SPI.end(); }
 void send_data(ubyte data) {
     // gain control of the SPI port
     // and configure settings
-    SPI.beginTransaction(SPISettings(100'000, LSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(SPISettings(20'000'000, LSBFIRST, SPI_MODE0));
         // data mode
         digitalWrite((int)DC_PIN, HIGH);
         // take the SS pin low to select the chip:
@@ -73,7 +73,7 @@ void send_data(ubyte data) {
 }
 
 void send_command(ubyte command) {
-    SPI.beginTransaction(SPISettings(100'000, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(SPISettings(20'000'000, MSBFIRST, SPI_MODE0));
         digitalWrite((int)DC_PIN, LOW);
         digitalWrite((int)CS_PIN, LOW);
 
