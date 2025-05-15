@@ -1,42 +1,35 @@
-#ifdef __INTELLISENSE__
-    #pragma diag_suppress 1696
-#endif
-#include <LiTeX.h>
-#ifdef __INTELLISENSE__
-    #pragma diag_default 1696
-#endif
-
 #include <iostream>
 #include <string> 
 #include <vector>
-#include "RenderEngine.h"
+#include "RenderEngine.cpp"
 
-std::string Between(std::string str, ubyte start, char char1, char char2, bool quiet) {
+std::string Between(std::string str, ubyte start, char char1, char char2, bool reverse = false) {
     ubyte c1Indx = 0;
     ubyte c1Count = 0;
     ubyte c2Count = 0;
 
-    for (ubyte i = start; i < ubyte(str.size()); i++) {
+    for (ubyte i = start; reverse ? i >= 0 : i < ubyte(str.size()); i += reverse ? -1 : 1) {
         if (str[i] == char1) {
             if (c1Count == 0) c1Indx = i;
             c1Count++;
         }
         else if (str[i] == char2) {
             c2Count++;
-            if (c1Count == c2Count) 
-                return std::string(&str[c1Indx + 1], &str[i]);
+            if (c1Count == c2Count) {
+                return reverse
+                ? std::string(&str[i + 1], &str[c1Indx])
+                : std::string(&str[c1Indx + 1], &str[i]);
+            }
         }
     }
 
-    if (!quiet) {
-        std::cerr << "COULD NOT FIND CONTENTS BETWEEN " + std::string(1, char1) + " AND " + std::string(1, char2) + " IN " + str + "." << std::endl;
-    }
+    std::cerr << "COULD NOT FIND CONTENTS BETWEEN " + std::string(1, char1) + " AND " + std::string(1, char2) + " IN " + str + "." << std::endl;
     return "ERROR";
 }
 
 ubyte lastFinishedBarHt = 0;
 const std::string specials[5] = { "pi", "e", "im", "perm", "comb" };
-Render GenerateRender(std::string eq, bool exp) {
+Render GenerateRender(std::string eq, bool exp = false) {
     //std::cout << "Generating render for eq '" << eq << "'" << std::endl;
 
     std::string lead = exp ? "^" : "";
@@ -55,7 +48,7 @@ Render GenerateRender(std::string eq, bool exp) {
         // TRIVIAL CHARS ----------------------------------------------------------------------- TRIVIAL CHARS
         if (isdigit(eq[i]) || isalpha(eq[i]) || 
             eq[i] == '/' || eq[i] == '*' || eq[i] == '+' || eq[i] == '-' ||
-            eq[i] == '`' || eq[i] == '~' || eq[i] == '.' || eq[i] == '='
+            eq[i] == '`' || eq[i] == '~' || eq[i] == '.' || eq[i] == '=' || eq[i] == '!'
         ) {
             //std::cout << "Appending character " << eq[i] << std::endl;
             Render gl = ReadGlyph(lead + eq[i]);
@@ -118,9 +111,8 @@ Render GenerateRender(std::string eq, bool exp) {
         else if (eq[i] == '\\') {
             //std::cout << "Found escape sequence... " << std::endl;
 
-            std::string escSeq = Between(eq, i, '\\', '{', true);
-                                                                                                                                // TODO TODO TODO 
-                                                                                                                                // INFINITE LOOP!
+            std::string escSeq = Between(eq, i, '\\', '{');
+
             // SPECIAL CHARS ----------------------------------- SPECIAL CHARS
             if (escSeq == "ERROR") {
                 // Check if escape sequence is special character
