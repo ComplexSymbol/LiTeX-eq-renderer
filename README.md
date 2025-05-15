@@ -1,9 +1,9 @@
 # LiTeX
-LiTeX is a lightweight mathematical equation renderer for low-resolution LCDs built in Python. It is similar to CASIO or Texas Instrument's "V.P.A.M" or "MathPrint".
+LiTeX is a lightweight mathematical equation renderer for low-resolution LCDs built in Python or c++ with Arduino (developed for Teensy 4.0). It is similar to CASIO or Texas Instrument's "V.P.A.M" or "MathPrint".
 
-It contains a customizable rendering engine using a LALR (look-ahead, left-to-right, rightmost derivation) parser. The parser accepts a string formatted similarly to LaTeX. There is also an optional 4-wire SPI library if you want to display LiTeX on a monochrome LCD. Currently, it is set up for the ST-7567 controller.
+It contains a customizable rendering engine using a LALR (look-ahead, left-to-right, rightmost derivation) parser. The parser accepts a string formatted similarly to LaTeX. There is also an optional 4-wire SPI library if you want to display LiTeX on a monochrome LCD. Currently, it is set up for an ST-7567 display.
 
-There is also a customizable, in-place equation evaluator that evaluates any LiTeX equation into a float. The evaluator supports all of the functions included in LiTeX, and also supports implicit multiplication. It cannot solve equations.
+There is also a customizable, in-place equation evaluator that evaluates any LiTeX equation into a complex number. The evaluator supports all of the functions included in LiTeX, and also supports implicit multiplication. It can solve single variable equations with x using newton's method. (Solver is currently Python-only)
 
 ## LiTeX features:
 - Self-resizing parenthesis
@@ -15,12 +15,14 @@ There is also a customizable, in-place equation evaluator that evaluates any LiT
 - Inverse trig function of sin, cos, and tan
 - Algebreic constants: e, pi, i, x
 - Expression Evaluator with implicit multiplication support
-- Complex number support with log, exp, trig, and radicals.
+- Complex number support with all functions
 
 ## Inputting expressions:
 Expression syntax differs slightly from regular LaTeX when it comes to a few functions. To make the expression less ambiguous, easier for the parser to understand, and to make the code more lightweight, extra braces are required around a few functions. Functions that are not in this list are the same as in LaTeX.
-### Negative sign:
+### Negative sign (python):
 Negative sign, which is shorter than the minus operator, can be specified by using the tilde (~). e.g. "~4+3" Using the minus _operator_ in that example ("-4+3") does not yield an error, but it may cause unexpected errors if placed in other parts of the expression. It is best to use the tilde when specifying a negative number.
+### Negative sign (c++):
+After realizing that the python implementation of negative sign is really bad, the ~ character is only recognized by the rendering engine. It is immediately replaced with - in the evaluator.
 ### Exponents:
 Exponents should look like this when they are inputted into both the renderer and the evaluator. e.g. "a^{b}" Braces are required even if there is only 1 digit in the exponent.
 ### Subscript:
