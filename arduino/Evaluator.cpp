@@ -25,6 +25,8 @@ std::string CmplxToStr(cmplx z, ubyte prec = 10, bool forRender = false) {
 
 // PARSE COMPLEX ===================================================================== PARSE COMPLEX
 cmplx ParseComplex(std::string str) {
+    if (str == "(nan+nani)") return NaN;
+
     long double real = 0;
     long double imag = 0;
     bool opFound = false;
@@ -89,9 +91,9 @@ PARSE_START:
         else if (isEnd) {
             // Because other parts would catch an imaginary number, the number must be real
             // Or, in the erroneous format a+a
-            if (opFound) {
-                reason = "Multiple real parts found";
-                goto ERROR;
+            if (opFound || str[0] == '(') {
+                reason = "Invalid format";
+            goto ERROR;
             }
             return cmplx(std::stold(str));
         }
@@ -266,14 +268,14 @@ ERROR:
 
 // ADDITIONAL MATH FUNCS ============================================================= ADDITIONAL MATH FUNCS
 cmplx factorial(cmplx z) {
-    return z.imag() == 0
+    return z.imag() == 0 && z.real() >= 0
         ? cmplx(std::tgammal(z.real() + 1), 0)
         : std::sqrt(cmplx(2*M_PI, 0) / (z += 1)) * std::pow((z / cmplx(M_E, 0)) * std::sqrt(z * cmplx(0, -1) * std::sin(cmplx(0, 1) / z)), z);
 }
 
 // EVALUATE ========================================================================== EVALUATE
 cmplx Evaluate(std::string eq) {
-    std::cout << "Evaluating eq " << eq << " (" << eq.size() << ")" << std::endl;
+    std::cout << "Evaluating eq " << eq << " (len: " << eq.size() << ")" << std::endl;
     std::string reason = "";
 { // Scope so that 'goto ERROR' will not bypass variable initialization
     if (eq.size() >= 0xFF) {
@@ -329,13 +331,15 @@ cmplx Evaluate(std::string eq) {
     while ((loc = eq.find('(', loc + 1)) != std::string::npos) {
         std::string contents = Between(eq, loc, '(', ')');
         std::cout << "Found parenthesis with contents: " << contents << std::endl;
-        
+        bool beforeExp = eq[contents.size() + 2] == '^';
+
         cmplx toRepl = ParseComplex("(" + contents + ")");
         if (isNan(toRepl)) toRepl = Evaluate(contents);
 
         eq.erase(loc, contents.size() + 2);
-        eq.insert(loc, CmplxToStr(toRepl));
+        eq.insert(loc, beforeExp ? "(" + CmplxToStr(toRepl) + ")" : CmplxToStr(toRepl));
     }
+    std::cout << "EQ after paren: " << eq << std::endl;
     
     // RADICALS
     loc = -1;
@@ -360,19 +364,29 @@ cmplx Evaluate(std::string eq) {
     // EXPONENTS
     loc = -1;
     while ((loc = eq.find('^', loc + 1)) != std::string::npos) {
-        std::string exp = Between(eq, loc + 1, '{', '}');
-        std::string base = FindCmplx(eq, loc, true);
-        std::cout << "Found exponent with base " << base << " and exponent " << exp << std::endl;
+        bool isParen = eq[loc - 1] == ')';
 
-        eq.erase(loc - base.size(), base.size() + 3 + exp.size());
-        eq.insert(loc - base.size(), 
+        std::string exp = Between(eq, loc + 1, '{', '}');
+        std::string base = isParen ? Between(eq, loc - 1, ')', '(', true) : FindCmplx(eq, loc, true);
+        std::cout << "(isparen: " << isParen << ") Found exponent with base " << base << " and exponent " << exp << std::endl;
+
+        eq.erase(loc - base.size() - (isParen ? 2 : 0), base.size() + (isParen ? 5 : 3) + exp.size());
+        eq.insert(loc - base.size()- (isParen ? 2 : 0), 
             CmplxToStr(std::pow(ParseComplex(base), Evaluate(exp))));
     }
 
     loc = -1;
     while ((loc = eq.find('!', loc + 1)) != std::string::npos) {
         std::string num = FindCmplx(eq, loc, true);
+
+        if (eq[0] == '-' && num.size() + 1 == loc)
+            num = '-' + num;
+
         std::cout << "Found factorial with number " << ParseComplex(num) << std::endl;
+        if (ParseComplex(num).real() < 0) {
+            reason = "Factorial only supported for Re(z) >= 0";
+            goto ERROR;
+        }
         
         eq.erase(loc - num.size(), num.size() + 1);
         eq.insert(loc - num.size(), CmplxToStr(factorial(ParseComplex(num))));
@@ -384,6 +398,10 @@ cmplx Evaluate(std::string eq) {
         // Implicit multiplication will make it ...*\perm*...
         std::string n = FindCmplx(eq, std::get<1>(locFunc) - 1, true);
         std::string r = FindCmplx(eq, std::get<1>(locFunc) + 5, false);
+
+        if (eq[0] == '-' && n.size() + 1 == std::get<1>(locFunc))
+            n = '-' + n;
+
         cmplx Nparsed = ParseComplex(n);
         cmplx Rparsed = ParseComplex(r);
         
@@ -400,17 +418,22 @@ cmplx Evaluate(std::string eq) {
         );
     }
 
+    if (eq.find("nan") != std::string::npos) {
+        reason = "NaN in eq";
+        goto ERROR;
+    }
+
     // OPERATORS ========================================================= OPERATORS
     std::cout << "Finding operators..." << std::endl;
     ubyte curOp = 0;
-    size_t progress = 0;
+    size_t progress = 1;
     bool DNC = false;
     const char ops[] = { '/', '*', '-', '+' };
     while (DNC || isNan(ParseComplex(eq))) {
         if ((progress = eq.find(ops[curOp], progress)) == std::string::npos) {
             std::cout << "Could not find operator " << ops[curOp] << " in eq: " << eq << std::endl;
             curOp++;
-            progress = 0;
+            progress = 1;
             DNC = true;
             continue;
         }
@@ -442,6 +465,9 @@ cmplx Evaluate(std::string eq) {
             continue;
         }
 
+        if (eq[0] == '-' && first.size() + 1 == progress)
+            first = '-' + first;
+
         std::cout << "Old eq: " << eq << std::endl;
         eq.erase(progress - first.size(), first.size() + 1 + second.size());
 
@@ -453,6 +479,7 @@ cmplx Evaluate(std::string eq) {
         std::cout << "new progress: " << progress << std::endl;
     }   
 
+    std::cout << "Finished evaluating... ans: " << eq << std::endl;
     return ParseComplex(eq);
 } // End error scope (Not evaluate)
 

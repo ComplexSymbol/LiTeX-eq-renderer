@@ -3,11 +3,14 @@
 #include <string>
 #include <complex>
 #include <chrono>
-#include "Evaluator.cpp"
+#include "Grapher.cpp"
 
 int main() {
-    std::string equation = "";
+    std::string equation = "sin(x)+cos(x/2)";
 
+    Graph(equation, 0.125, 0.125).Print(true);
+
+    /*
     //auto start = std::chrono::high_resolution_clock::now();
     //Render renderEQ = GenerateRender(equation);
     //auto finish = std::chrono::high_resolution_clock::now();
@@ -27,6 +30,7 @@ int main() {
     
     //renderEQ.Print(true);
     // renderANS.Print(true);
+    */
 
     return 0;
 }
