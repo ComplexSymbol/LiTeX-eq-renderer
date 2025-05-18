@@ -20,24 +20,38 @@ Render Graph(std::string eq, float scaleX = 0.125f, float scaleY = 0.125f) {
 
     // Calculate values and plot
     std::string rEQ = eq;
-    float y;
-    ull prevY = 0;
-    ull OR, nOR;
+    float y = 0;
+    ull ybmap = 0, prevYbmap = 0, mask = 0;
+    sbyte maxedOutDir = 0;
+    cmplx eval;
     for (sbyte i = 0; i != 127; i++) {
         ReplaceAll(rEQ, "x", "(" + CmplxToStr((i - 64) * scaleX) + ")");
-        y = Evaluate(rEQ).real() * 1 / scaleY;
-
-        std::cout << "Placing coordinate x: " << std::to_string((i - 64) * scaleX) << "... (" << (int)i << ", " << y << ")\n" << std::endl;
-        OR = (0 <= y + 32 && y + 32 < 64) ? 1ull << (int)(y + 32) : 0;
-        nOR = ~((OR << 1) | (OR >> 1));
         
-        graph.bitmap[i] |= OR;
-        graph.bitmap[i] &= nOR;
-        graph.bitmap[max(0, i - 1)] &= nOR | prevY;
-        graph.bitmap[min(126, i) + 1] &= nOR;
+        eval = Evaluate(rEQ);
+        if (std::abs(eval.imag()) > 0.001L) { rEQ = eq; continue; }
+        
+        y = std::round(eval.real() * (1 / scaleY));
+        ybmap = (-29 <= y && y < 32) ? 1ull << ((int)y + 32) : 0;
+        if (maxedOutDir == 0 && y >= 32) ybmap = ~(ULLONG_MAX >> 1);
+        
+        mask = ~((ybmap << 1) | ybmap | (ybmap >> 1));
+        std::cout << "Placing coordinate (" << (int)(i - 64) << ", " << y << ")  bmap: " << ybmap << std::endl;
+        
+        graph.bitmap[i] &= mask;
+        graph.bitmap[i] |= ybmap;
+        if (i != 0 && maxedOutDir == 0)
+            graph.bitmap[i] |= ybmap > prevYbmap
+                ? ((ybmap - 1) & ((prevYbmap == 0 && ybmap != 0) ? 0 : ~(prevYbmap - 1))) << 1
+                : ((prevYbmap - 1) & ((ybmap == 0 && prevYbmap != 0) ? 0 : ~(ybmap - 1)));
+        
+        if (maxedOutDir == -1 && ybmap != 0)
+            graph.bitmap[i] |= (ybmap - 1) & ~0b111LL;
+
+        graph.bitmap[max(0, i - 1)] &= mask | prevYbmap;
+        graph.bitmap[min(126, i) + 1] &= mask;
 
         rEQ = eq;
-        prevY = OR;
+        prevYbmap = ybmap;
     }
 
     return graph;
