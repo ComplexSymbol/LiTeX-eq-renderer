@@ -17,7 +17,7 @@ class Render {
     ubyte height;
 
     Render(std::vector<ull> bmap, ubyte ht);
-    void Print(bool prettyPrint = false);
+    void Print();
 };
 extern Render MergeRenders(Render a, Render b, ubyte x, ubyte y);
 extern Render AppendRenders(Render a, Render b, ubyte aAlign = 0, ubyte bAlign = 0, ubyte overlap = 0, ubyte overlapFrom = 0);

@@ -1,19 +1,22 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <iomanip>
 
 #include <Evaluator.h>
 #include <LiTeX.h>
 #include <RenderEngine.h>
 #include <DisplaySPI.h>
+#include <Grapher.h>
 
-std::string equation = "1^{2}";
+std::string equation = "x";
 
 void setup() {
     setup_SPI();
     delay(2000);
     
     std::cout.flush();
+    std::cout.precision();
     std::cout << "INIT INIT INIT" << std::endl;
 }
 
@@ -21,18 +24,11 @@ void loop() {
     std::cout << "LOOP LOOP LOOP" << std::endl;
     
     uint start = micros();
-    Render renderEQ = GenerateRender(equation);
+    Render graph = Graph(equation);
     uint finish = micros();
-    renderEQ.Print(true);
+    graph.Print();
 
-    std::cout << "Generated render in: " << (finish - start) << "µs" << std::endl;
-
-    start = micros();
-    cmplx ans = Evaluate(equation);
-    finish = micros();
-    std::cout << "ANS: " << CmplxToStr(ans) << std::endl;
-    
-    std::cout << "Evaluated in: " << (finish - start) << "µs" << std::endl;
+    std::cout << "Generated graph in: " << (finish - start) << "µs" << std::endl;
 
     std::cout << "Initializing display...\n" << std::endl;
     initialize_display();
@@ -42,7 +38,7 @@ void loop() {
     clear_display();
 
     std::cout << "Sending render..." << std::endl;
-    send_render(renderEQ);
+    send_render(graph);
   
     delay(3000);
     std::cout << "EXITING..." << std::endl;

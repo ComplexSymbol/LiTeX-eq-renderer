@@ -1,3 +1,5 @@
+#include <Evaluator.h>
+#include <LiTeX.h>
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -6,7 +8,6 @@
 #include <string>
 #include <vector>
 #include <map>
-#include "LiTeX.cpp"
 
 typedef std::complex<long double> cmplx;
 
@@ -17,7 +18,7 @@ inline sbyte sgn(long double val) {
     return (0 < val) - (val < 0);
 }
 
-std::string CmplxToStr(cmplx z, ubyte prec = 10, bool forRender = false) {
+std::string CmplxToStr(cmplx z, ubyte prec, bool forRender) {
     return (z.imag() == 0 || z.real() == 0)
          ? (std::stringstream() << std::setprecision(prec) << (z.imag() == 0 ? z.real() : z.imag()) << (z.imag() == 0 ? "" : (forRender ? "\\im" : "i"))).str()
          : ("(" + (std::stringstream() << std::setprecision(prec) << z.real()).str() + (sgn(z.imag()) >= 0 ? "+" : "") + (std::stringstream() << z.imag()).str() + "i)");
@@ -240,7 +241,7 @@ auto operate = [](ubyte op, cmplx a, cmplx b) {
 };
 
 // MULTI FIND ======================================================================== MULTI FIND
-std::tuple<std::string, ubyte> FindMultiple(std::string &eq, std::vector<std::string> finds, std::vector<std::string> replace = {}) {
+std::tuple<std::string, ubyte> FindMultiple(std::string &eq, std::vector<std::string> finds, std::vector<std::string> replace) {
     bool noReplace = replace == std::vector<std::string>({});
     for (ubyte i = 0; i < size(eq); i++) {
         for (ubyte n = 0; n < finds.size(); n++) {
@@ -331,7 +332,7 @@ cmplx Evaluate(std::string eq) {
     while ((loc = eq.find('(', loc + 1)) != std::string::npos) {
         std::string contents = Between(eq, loc, '(', ')');
         std::cout << "Found parenthesis with contents: " << contents << std::endl;
-        bool beforeExp = eq[contents.size() + 2] == '^';
+        bool beforeExp = eq[loc + contents.size() + 2] == '^';
 
         cmplx toRepl = ParseComplex("(" + contents + ")");
         if (isNan(toRepl)) toRepl = Evaluate(contents);
@@ -433,6 +434,8 @@ cmplx Evaluate(std::string eq) {
         if ((progress = eq.find(ops[curOp], progress)) == std::string::npos) {
             std::cout << "Could not find operator " << ops[curOp] << " in eq: " << eq << std::endl;
             curOp++;
+            if (curOp > 3) break; // something went wrong and it found and evaluated all operators, but it's not a parseable number at the end?
+
             progress = 1;
             DNC = true;
             continue;

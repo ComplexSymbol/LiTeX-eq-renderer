@@ -1,5 +1,8 @@
-#include "Evaluator.cpp"
-#include <algorithm>
+#include <Grapher.h>
+#include <Evaluator.h>
+#include <RenderEngine.h>
+#include <string>
+#include <iostream>
 
 static void ReplaceAll(std::string &str, const std::string& from, const std::string& to) {
     size_t start_pos = 0;
@@ -9,9 +12,9 @@ static void ReplaceAll(std::string &str, const std::string& from, const std::str
     }
 }
 
-Render Graph(std::string eq, float scaleX = 0.125f, float scaleY = 0.125f) {
+Render Graph(std::string eq, float scaleX, float scaleY) {
     Render graph = Render(std::vector<ull>(128, 4294967296ull), 64);
-    graph.bitmap[64] = ULLONG_MAX;
+    graph.bitmap[64] = 0xFFFF'FFFF'FFFF'FFFF;
     for (ubyte i = 1; i != 127; i++)
         if (i % 4 == 0)
             graph.bitmap[i] |= (i % 8 == 0 ? 0b11 : 0b1);
@@ -21,37 +24,26 @@ Render Graph(std::string eq, float scaleX = 0.125f, float scaleY = 0.125f) {
     // Calculate values and plot
     std::string rEQ = eq;
     float y = 0;
-    ull ybmap = 0, prevYbmap = 0, mask = 0;
-    sbyte maxedOutDir = 0;
+    ull ybmap = 0, mask = 0, prevYbmap;
     cmplx eval;
     for (sbyte i = 0; i != 127; i++) {
         ReplaceAll(rEQ, "x", "(" + CmplxToStr((i - 64) * scaleX) + ")");
-        
         eval = Evaluate(rEQ);
         if (std::abs(eval.imag()) > 0.001L) { rEQ = eq; continue; }
         
         y = std::round(eval.real() * (1 / scaleY));
         ybmap = (-29 <= y && y < 32) ? 1ull << ((int)y + 32) : 0;
-        if (maxedOutDir == 0 && y >= 32) ybmap = ~(ULLONG_MAX >> 1);
         
         mask = ~((ybmap << 1) | ybmap | (ybmap >> 1));
         std::cout << "Placing coordinate (" << (int)(i - 64) << ", " << y << ")  bmap: " << ybmap << std::endl;
         
         graph.bitmap[i] &= mask;
         graph.bitmap[i] |= ybmap;
-        if (i != 0 && maxedOutDir == 0)
-            graph.bitmap[i] |= ybmap > prevYbmap
-                ? ((ybmap - 1) & ((prevYbmap == 0 && ybmap != 0) ? 0 : ~(prevYbmap - 1))) << 1
-                : ((prevYbmap - 1) & ((ybmap == 0 && prevYbmap != 0) ? 0 : ~(ybmap - 1)));
-        
-        if (maxedOutDir == -1 && ybmap != 0)
-            graph.bitmap[i] |= (ybmap - 1) & ~0b111LL;
-
         graph.bitmap[max(0, i - 1)] &= mask | prevYbmap;
         graph.bitmap[min(126, i) + 1] &= mask;
 
-        rEQ = eq;
         prevYbmap = ybmap;
+        rEQ = eq;
     }
 
     return graph;

@@ -1,9 +1,9 @@
+#include <LiTeX.h>
 #include <iostream>
 #include <string> 
 #include <vector>
-#include "RenderEngine.cpp"
 
-std::string Between(std::string str, ubyte start, char char1, char char2, bool reverse = false) {
+std::string Between(std::string str, ubyte start, char char1, char char2, bool reverse) {
     ubyte c1Indx = 0;
     ubyte c1Count = 0;
     ubyte c2Count = 0;
@@ -29,7 +29,7 @@ std::string Between(std::string str, ubyte start, char char1, char char2, bool r
 
 ubyte lastFinishedBarHt = 0;
 const std::string specials[5] = { "pi", "e", "im", "perm", "comb" };
-Render GenerateRender(std::string eq, bool exp = false) {
+Render GenerateRender(std::string eq, bool exp) {
     //std::cout << "Generating render for eq '" << eq << "'" << std::endl;
 
     std::string lead = exp ? "^" : "";
