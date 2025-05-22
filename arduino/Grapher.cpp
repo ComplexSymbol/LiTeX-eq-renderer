@@ -1,49 +1,113 @@
-#include <Grapher.h>
-#include <Evaluator.h>
-#include <RenderEngine.h>
-#include <string>
-#include <iostream>
+#include "Evaluator.cpp"
+#include <algorithm>
 
-static void ReplaceAll(std::string &str, const std::string& from, const std::string& to) {
+std::string ReplaceAll(std::string str, const std::string from, const std::string to) {
     size_t start_pos = 0;
     while((start_pos = str.find(from, start_pos)) != std::string::npos) {
         str.replace(start_pos, from.length(), to);
         start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
     }
+    return str;
 }
 
-Render Graph(std::string eq, float scaleX, float scaleY) {
+void MaskedOr(Render &render, ull toOR, sbyte index, bool rightOnly = false) {
+    if (index < 0) return;
+
+    if (index != 0 && !rightOnly) {
+        render.bitmap[index - 1] &= ~(toOR << 1);
+        render.bitmap[index - 1] &= ~toOR;
+        render.bitmap[index - 1] &= ~(toOR >> 1);
+    }
+
+    if (index != render.bitmap.size() - 1) {
+        render.bitmap[index + 1] &= ~(toOR << 1);
+        render.bitmap[index + 1] &= ~toOR;
+        render.bitmap[index + 1] &= ~(toOR >> 1);
+    }
+
+    render.bitmap[index] &= ~(toOR << 1);
+    render.bitmap[index] &= ~(toOR >> 1);
+    render.bitmap[index] |= toOR;
+}
+
+Render Graph(std::string eq, float scaleX = 0.125f, float scaleY = 0.125f, bool showScale = false, sbyte traceX = -1) {
     Render graph = Render(std::vector<ull>(128, 4294967296ull), 64);
-    graph.bitmap[64] = 0xFFFF'FFFF'FFFF'FFFF;
+    graph.bitmap[64] = ULLONG_MAX;
     for (ubyte i = 1; i != 127; i++)
         if (i % 4 == 0)
             graph.bitmap[i] |= (i % 8 == 0 ? 0b11 : 0b1);
-    graph.bitmap[0] |= 0x1111111111111110; 
+    graph.bitmap[0] |= 0x1111111111111110;
     graph.bitmap[1] |= 0x0101010101010100;
+
+    if (showScale) {
+        ubyte pos = 80; 
+        graph.bitmap[pos] |= 0b111000;
+        for (ubyte i = pos; i < pos + 8; i++)
+            graph.bitmap[i] |= 0b010000;
+        graph.bitmap[pos + 8] |= 0b111000;
+        
+        Render scale = GenerateRender(CmplxToStr(scaleX * 8), true);
+        graph = MergeRenders(graph, scale, pos + 4 - (scale.bitmap.size() / 2), 7);
+    }
 
     // Calculate values and plot
     std::string rEQ = eq;
-    float y = 0;
-    ull ybmap = 0, mask = 0, prevYbmap;
-    cmplx eval;
-    for (sbyte i = 0; i != 127; i++) {
-        ReplaceAll(rEQ, "x", "(" + CmplxToStr((i - 64) * scaleX) + ")");
+    float y = 0, traceY;
+    ull ybmap = 0, prevYbmap, traceYbmap;
+    cmplx eval, traceEval;
+    Render coord = Render(std::vector<ull>({ 0 }), 1);
+    for (sbyte i = 0; i <= 126; i++) {
+        rEQ = ReplaceAll(rEQ, "x", "(" + CmplxToStr((i - 64) * scaleX) + ")");
         eval = Evaluate(rEQ);
         if (std::abs(eval.imag()) > 0.001L) { rEQ = eq; continue; }
         
         y = std::round(eval.real() * (1 / scaleY));
         ybmap = (-29 <= y && y < 32) ? 1ull << ((int)y + 32) : 0;
         
-        mask = ~((ybmap << 1) | ybmap | (ybmap >> 1));
-        std::cout << "Placing coordinate (" << (int)(i - 64) << ", " << y << ")  bmap: " << ybmap << std::endl;
-        
-        graph.bitmap[i] &= mask;
-        graph.bitmap[i] |= ybmap;
-        graph.bitmap[max(0, i - 1)] &= mask | prevYbmap;
-        graph.bitmap[min(126, i) + 1] &= mask;
+        if (i >= graph.bitmap.size() - coord.bitmap.size() - 1 && ybmap >= 0x200000000000000) { rEQ = eq; continue; }
+
+        //std::cout << "Placing coordinate (" << (int)(i - 64) << ", " << y << ")  bmap: " << ybmap << std::endl;
+        MaskedOr(graph, ybmap, i, false);
+        if (i > 0)
+            graph.bitmap[i - 1] |= prevYbmap;
+
+        if (i == traceX) { traceY = y; traceEval = eval; }
 
         prevYbmap = ybmap;
         rEQ = eq;
+    }
+
+    if (traceX >= 0) {
+        coord = GenerateRender(ReplaceAll("(" + CmplxToStr((traceX - 64) * scaleX, 3) + "," + CmplxToStr(traceEval.real(), 3) + ")", "-", "~"), true);
+        if (coord.bitmap.size() >= 63)
+            graph.bitmap[64] &= ULLONG_MAX >> 8;
+
+        ull traceYbmap = (-29 <= traceY && traceY < 32) ? 1ull << ((int)traceY + 32) : 0;
+
+        if (-29 <= traceY && traceY < 32 && !(traceX >= 128 - coord.bitmap.size() && traceY >= 27)) {
+        // Outline point on graph
+            MaskedOr(graph, (traceYbmap << 1) | traceYbmap | (traceYbmap >> 1), traceX - 2, false);
+            MaskedOr(graph, traceYbmap << 2, traceX - 1, true);
+            MaskedOr(graph, traceYbmap >> 2, traceX - 1, true);
+            MaskedOr(graph, traceYbmap << 2, traceX, true);
+            MaskedOr(graph, traceYbmap >> 2, traceX, true);
+            MaskedOr(graph, traceYbmap << 2, traceX + 1, true);
+            MaskedOr(graph, traceYbmap >> 2, traceX + 1, true);
+            MaskedOr(graph, (traceYbmap << 1) | traceYbmap | (traceYbmap >> 1), traceX + 2, true);
+            MaskedOr(graph, traceYbmap, traceX);
+        }
+        else if (-29 > traceY) {
+            MaskedOr(graph, 0x2, traceX - 1, false);
+            MaskedOr(graph, 0xF, traceX, true);
+            MaskedOr(graph, 0x2, traceX + 1, true);
+        } else if (!(traceX >= 128 - coord.bitmap.size() && traceY >= 27)) {
+            MaskedOr(graph, 0xF000000000000000, traceX, false);
+            if (traceX > 0)
+                graph.bitmap[traceX - 1] |= 0x4000000000000000;
+            MaskedOr(graph, 0x4000000000000000, traceX + 1, true);
+        }
+        
+        graph = MergeRenders(graph, coord, 127 - coord.bitmap.size(), 58);
     }
 
     return graph;

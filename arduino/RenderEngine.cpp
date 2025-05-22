@@ -1,16 +1,14 @@
-#include <RenderEngine.h>
-#include <Prerendered.h>
 #include <vector>
 #include <iostream>
 #include <bitset>
-#include <map>
+#include "Prerendered.cpp"
 
 typedef unsigned long long ull;
 typedef unsigned char ubyte;
 typedef signed char sbyte;
 
-inline sbyte max(sbyte a, sbyte b) { return a > b ? a : b; }
-inline sbyte min(sbyte a, sbyte b) { return a < b ? a : b; }
+inline short max(short a, short b) { return a > b ? a : b; }
+inline short min(short a, short b) { return a < b ? a : b; }
 
 static const std::map<ubyte, std::string> printGlyphs = {
     { 0b00, " " },
@@ -19,22 +17,34 @@ static const std::map<ubyte, std::string> printGlyphs = {
     { 0b11, "█" }
 };
 
-Render::Render(std::vector<ull> bmap, ubyte ht) {
-    bitmap = bmap;
-    height = ht;
-};
+class Render {
+    public:
+    
+    std::vector<ull> bitmap;
+    ubyte height;
 
-void Render::Print() {
-    std::cout << "DIMENSIONS: " << bitmap.size() << "x" << int(height) << std::endl;
-    for (ubyte y = height; y > 0; y -= 2) { // Print top to bottom
-        for (short x = 0; x < bitmap.size(); x++) {
-            ubyte key = (bitmap[x] >> (y - 2)) & 0b11;
-            std::cout << printGlyphs.at(key);
-        }
-        
-        std::cout << std::endl;
-    }   
-}
+    Render(std::vector<ull> bmap, ubyte ht) {
+        //std::cout << "Allocating new Render object with bitmap of size " << bmap.size() << " and height " << int(ht) << std::endl;
+
+        bitmap = bmap;
+        height = ht;
+    }
+    ~Render() {
+        //std::cout << "Destroying render object with bitmap of size " << bitmap.size() << " and height " << int(height) << std::endl;
+    }
+
+    void Print() {
+        std::cout << "DIMENSIONS: " << bitmap.size() << "x" << int(height) << std::endl;
+        for (ubyte y = height; y > 0; y -= 2) { // Print top to bottom
+            for (short x = 0; x < bitmap.size(); x++) {
+                ubyte key = (bitmap[x] >> (y - 2)) & 0b11;
+                std::cout << printGlyphs.at(key);
+            }
+            
+            std::cout << std::endl;
+        }   
+    }
+};
 
 // Overlaps b over a at (x, y) and ORs all values.
 // Original 'a' dimensions are returned. All values that do not overlap (hanging off) are ignored.
@@ -46,7 +56,7 @@ Render MergeRenders(Render a, Render b, ubyte x, ubyte y) {
 
     // Why not iterate from a to a.bitmap.size()? Because portions between 0 and x
     // aren't modified, so we don't have to loop over them.
-    ull mask = (a.height >= 64) ? ~0ull : ((1ull << a.height) - 1ull); // careful if height == 64
+    ull mask = (a.height >= 64) ? ULLONG_MAX : ((1ull << a.height) - 1ull); // careful if height == 64
     short stop = min(x + b.bitmap.size(), a.bitmap.size());
 
     for (short col = x; col < stop; col++) {
@@ -59,7 +69,7 @@ Render MergeRenders(Render a, Render b, ubyte x, ubyte y) {
 // Appends b to a. Aligns aAlign and bAlign y values so they are on the same level.
 // Returns a larger bitmap.
 // `a` gets appended with `b` and (aligns `a` and `b` OR overlaps `b` by `overlap` starting at height `overlapFrom`)
-Render AppendRenders(Render a, Render b, ubyte aAlign, ubyte bAlign, ubyte overlap, ubyte overlapFrom) {
+Render AppendRenders(Render a, Render b, ubyte aAlign = 0, ubyte bAlign = 0, ubyte overlap = 0, ubyte overlapFrom = 0) {
     if (a.bitmap.empty()) {
         return b;
     }
@@ -74,13 +84,13 @@ Render AppendRenders(Render a, Render b, ubyte aAlign, ubyte bAlign, ubyte overl
     // Negative diff means a has to move up to match b
     sbyte diff = aAlign - bAlign;
 
-    std::cout << "AppendRenders ARGS: " 
-        << "aAlign: " << int(aAlign)
-        << ", bAlign: " << int(bAlign)
-        << ", overlap: " << int(overlap)
-        << ", overlapFrom: " << int(overlapFrom)
-        << ", diff: " << int(diff)
-        << std::endl;
+    //std::cout << "AppendRenders ARGS: " 
+    //    << "aAlign: " << int(aAlign)
+    //    << ", bAlign: " << int(bAlign)
+    //    << ", overlap: " << int(overlap)
+    //    << ", overlapFrom: " << int(overlapFrom)
+    //    << ", diff: " << int(diff)
+    //    << std::endl;
 
     Render canvas = Render(
         std::vector<ull>(a.bitmap.size() + b.bitmap.size(), 0ull), // empty bitmap of a width + b width
@@ -100,8 +110,7 @@ Render AppendRenders(Render a, Render b, ubyte aAlign, ubyte bAlign, ubyte overl
     return canvas;
 }
 
-Render ReadGlyph(std::string g, sbyte resizeParenBy, bool absVal, bool isExp) {
-    std::cout << "    Reading glyph..." << std::flush;
+Render ReadGlyph(std::string g, sbyte resizeParenBy = 0, bool absVal = false, bool isExp = false) {
     std::vector<ushort> gl = prerenderedGlyphs.at(g);
 
     ubyte ht = gl[gl.size() - 1];
@@ -125,6 +134,5 @@ Render ReadGlyph(std::string g, sbyte resizeParenBy, bool absVal, bool isExp) {
         }
     }
 
-    std::cout << "Done" << std::endl;
     return Render(std::vector<ull>(gl.begin(), gl.end()), ht + abs(resizeParenBy));
 }

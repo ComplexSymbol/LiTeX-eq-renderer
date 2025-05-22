@@ -1,5 +1,3 @@
-#include <Evaluator.h>
-#include <LiTeX.h>
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -8,8 +6,10 @@
 #include <string>
 #include <vector>
 #include <map>
+#include "LiTeX.cpp"
 
 typedef std::complex<long double> cmplx;
+typedef long double ldub;
 
 const cmplx NaN(std::nan("0"), std::nan("0"));
 inline bool isNan(cmplx z) { return z != z; }
@@ -18,10 +18,22 @@ inline sbyte sgn(long double val) {
     return (0 < val) - (val < 0);
 }
 
-std::string CmplxToStr(cmplx z, ubyte prec, bool forRender) {
+ldub roundLD(ldub var, ubyte prec) {
+    char str[40];
+
+    sprintf(str, "%.*Lf", prec, var);
+    sscanf(str, "%Lf", &var); 
+
+    return var; 
+}
+
+std::string CmplxToStr(cmplx z, ubyte prec = 10, bool forRender = false) {
+    z.real(roundLD(z.real(), prec));
+    z.imag(roundLD(z.imag(), prec));
+    
     return (z.imag() == 0 || z.real() == 0)
-         ? (std::stringstream() << std::setprecision(prec) << (z.imag() == 0 ? z.real() : z.imag()) << (z.imag() == 0 ? "" : (forRender ? "\\im" : "i"))).str()
-         : ("(" + (std::stringstream() << std::setprecision(prec) << z.real()).str() + (sgn(z.imag()) >= 0 ? "+" : "") + (std::stringstream() << z.imag()).str() + "i)");
+         ? (std::stringstream() << (z.imag() == 0 ? z.real() : z.imag()) << (z.imag() == 0 ? "" : (forRender ? "\\im" : "i"))).str()
+         : (std::stringstream() << "(" << z.real() << (sgn(z.imag()) >= 0 ? "+" : "") << z.imag() << "i)").str();
 }
 
 // PARSE COMPLEX ===================================================================== PARSE COMPLEX
@@ -110,7 +122,7 @@ PARSE_START:
     return cmplx(real, imag);
     
 ERROR:
-    std::cerr << "                                                    >>> COULD NOT PARSE '" << str << "' FOR COMPLEX (" << reason << ")" << std::endl;
+    //std::cerr << "                                                    >>> COULD NOT PARSE '" << str << "' FOR COMPLEX (" << reason << ")" << std::endl;
     return NaN;
 }
 
@@ -121,12 +133,18 @@ std::string FindCmplx(std::string str, ubyte loc, bool before) {
     ubyte plusCount = 0;
     bool isEnd = false;
     std::string reason = "";
+    if (loc + (before ? -1 : 1) <= 0) goto ERROR;
 
     for (ubyte i = loc + (before ? -1 : 1); 
         before ? (i >= 0) : (i < str.size()); 
         i += (before ? -1 : 1)
     ) {
+        std::cout << int(i) << std::flush;
+        std::cout << ": " << str[i] << std::endl;
+
         isEnd = i == (before ? 0 : str.size() - 1);
+        if (isEnd)
+            return before ? str.substr(i, loc - i) : str.substr(loc + 1, i - loc);
 
         if (i == loc - 1 && before && str[i] == ')') {
             return "(" + Between(str, i, ')', '(', true) + ")";
@@ -135,7 +153,7 @@ std::string FindCmplx(std::string str, ubyte loc, bool before) {
             return "(" + Between(str, i, '(', ')') + ")";
 
         if (str[i] == '+') {    // Must be part of exp 
-            if (str[i - 1] != 'e' || plusCount > 0) {
+            if ((i > 0 && str[i - 1] != 'e') || plusCount > 0) {
                 return before 
                     ? str.substr(i + 1, loc - i - 1)
                     : str.substr(loc + 1, i - loc - 1); 
@@ -151,7 +169,7 @@ std::string FindCmplx(std::string str, ubyte loc, bool before) {
                 else if (str[i - 1] != 'e' || minusCount > 1)
                     return str.substr(loc + 1, i - loc - 1);
             }
-            else {
+            else if (i > 0) {
                 if (str[i - 1] != 'e') {
                     return str.substr(i + 1, loc - i - 1);
                 }
@@ -164,12 +182,10 @@ std::string FindCmplx(std::string str, ubyte loc, bool before) {
         else if (!(isdigit(str[i]) || str[i] == 'e' || str[i] == '.' || (str[i] == 'i' && before && i == loc - 1))) {
             return before ? str.substr(i + 1, loc - i - 1) : str.substr(loc + 1, i - loc - 1);
         }
-        else if (isEnd)
-            return before ? str.substr(i, loc - i) : str.substr(loc + 1, i - loc);
     }
 
 ERROR:
-    std::cerr << "                                                    >>> COULD NOT FIND COMPLEX IN STR " << str << " (loc: " << (int)loc << ") Reason: " << reason << std::endl;
+    //std::cerr << "                                                    >>> COULD NOT FIND COMPLEX IN STR " << str << " (loc: " << (int)loc << ") Reason: " << reason << std::endl;
     return "";
 }
 
@@ -192,7 +208,7 @@ void AddImpMultTo(std::string& eq) {
     }
     return;
 ERROR:
-    std::cerr << "EQUATION BECAME TOO LARGE WHILE ADDING IMPLICIT MULTIPLICATION IN EQ: " << eq << std::endl;
+    //std::cerr << "EQUATION BECAME TOO LARGE WHILE ADDING IMPLICIT MULTIPLICATION IN EQ: " << eq << std::endl;
     std::terminate();
 }
 
@@ -241,7 +257,7 @@ auto operate = [](ubyte op, cmplx a, cmplx b) {
 };
 
 // MULTI FIND ======================================================================== MULTI FIND
-std::tuple<std::string, ubyte> FindMultiple(std::string &eq, std::vector<std::string> finds, std::vector<std::string> replace) {
+std::tuple<std::string, ubyte> FindMultiple(std::string &eq, std::vector<std::string> finds, std::vector<std::string> replace = {}) {
     bool noReplace = replace == std::vector<std::string>({});
     for (ubyte i = 0; i < size(eq); i++) {
         for (ubyte n = 0; n < finds.size(); n++) {
@@ -258,8 +274,8 @@ std::tuple<std::string, ubyte> FindMultiple(std::string &eq, std::vector<std::st
         }
     }
 
-    if (!noReplace)
-        std::cerr << "                                                    >>> COULD NOT FIND MULTIPLES IN EQ: '" << eq << "'" << std::endl;
+    //if (!noReplace)
+    //    std::cerr << "                                                    >>> COULD NOT FIND MULTIPLES IN EQ: '" << eq << "'" << std::endl;
     return std::tuple<std::string, ubyte>("", 0xFF);
 
 ERROR:
@@ -276,7 +292,7 @@ cmplx factorial(cmplx z) {
 
 // EVALUATE ========================================================================== EVALUATE
 cmplx Evaluate(std::string eq) {
-    std::cout << "Evaluating eq " << eq << " (len: " << eq.size() << ")" << std::endl;
+    //std::cout << "Evaluating eq " << eq << " (len: " << eq.size() << ")" << std::endl;
     std::string reason = "";
 { // Scope so that 'goto ERROR' will not bypass variable initialization
     if (eq.size() >= 0xFF) {
@@ -286,7 +302,7 @@ cmplx Evaluate(std::string eq) {
 
     // SETUP EQUATION
     {   cmplx test; // Is eq a number? (Scope so test is del)
-        std::cout << "Testing whether eq is complex..." << std::endl;
+        //std::cout << "Testing whether eq is complex..." << std::endl;
         if (!isNan(test = ParseComplex(eq))) return test;   }
 
     AddImpMultTo(eq);
@@ -303,9 +319,9 @@ cmplx Evaluate(std::string eq) {
             != std::tuple<std::string, ubyte>("", 0xFF)) {}
 
         // TRIGONOMETRIC FUNCTIONS
-        std::cout << "Finding trig functions..." << std::endl;
+        //std::cout << "Finding trig functions..." << std::endl;
         while((loc = FindMultiple(eq, std::vector<std::string>({ "sin", "cos", "tan", "sec", "csc", "cot", "sinh", "cosh", "tanh", "sin^{-1}", "cos^{-1}", "tan^{-1}" }))) != std::tuple<std::string, ubyte>("", 0xFF)) {
-            std::cout << "Found trig function " << std::get<0>(loc) << std::endl;
+            //std::cout << "Found trig function " << std::get<0>(loc) << std::endl;
             std::string contents = Between(eq, std::get<1>(loc) + std::get<0>(loc).size(), '(', ')');
             
             eq.erase(std::get<1>(loc), std::get<0>(loc).size() + contents.size() + 2);
@@ -314,7 +330,7 @@ cmplx Evaluate(std::string eq) {
     }
 
     AddImpMultTo(eq);
-    std::cout << "Evaluating standardized equation " << eq << std::endl;
+    //std::cout << "Evaluating standardized equation " << eq << std::endl;
 
     // LOGARITHMS
     size_t loc = -1;
@@ -331,7 +347,7 @@ cmplx Evaluate(std::string eq) {
     loc = -1;
     while ((loc = eq.find('(', loc + 1)) != std::string::npos) {
         std::string contents = Between(eq, loc, '(', ')');
-        std::cout << "Found parenthesis with contents: " << contents << std::endl;
+        //std::cout << "Found parenthesis with contents: " << contents << std::endl;
         bool beforeExp = eq[loc + contents.size() + 2] == '^';
 
         cmplx toRepl = ParseComplex("(" + contents + ")");
@@ -340,7 +356,7 @@ cmplx Evaluate(std::string eq) {
         eq.erase(loc, contents.size() + 2);
         eq.insert(loc, beforeExp ? "(" + CmplxToStr(toRepl) + ")" : CmplxToStr(toRepl));
     }
-    std::cout << "EQ after paren: " << eq << std::endl;
+    //std::cout << "EQ after paren: " << eq << std::endl;
     
     // RADICALS
     loc = -1;
@@ -369,7 +385,7 @@ cmplx Evaluate(std::string eq) {
 
         std::string exp = Between(eq, loc + 1, '{', '}');
         std::string base = isParen ? Between(eq, loc - 1, ')', '(', true) : FindCmplx(eq, loc, true);
-        std::cout << "(isparen: " << isParen << ") Found exponent with base " << base << " and exponent " << exp << std::endl;
+        //std::cout << "(isparen: " << isParen << ") Found exponent with base " << base << " and exponent " << exp << std::endl;
 
         eq.erase(loc - base.size() - (isParen ? 2 : 0), base.size() + (isParen ? 5 : 3) + exp.size());
         eq.insert(loc - base.size()- (isParen ? 2 : 0), 
@@ -383,7 +399,7 @@ cmplx Evaluate(std::string eq) {
         if (eq[0] == '-' && num.size() + 1 == loc)
             num = '-' + num;
 
-        std::cout << "Found factorial with number " << ParseComplex(num) << std::endl;
+        //std::cout << "Found factorial with number " << ParseComplex(num) << std::endl;
         if (ParseComplex(num).real() < 0) {
             reason = "Factorial only supported for Re(z) >= 0";
             goto ERROR;
@@ -407,7 +423,7 @@ cmplx Evaluate(std::string eq) {
         cmplx Rparsed = ParseComplex(r);
         
         cmplx permute = factorial(Nparsed) / (factorial(Nparsed - Rparsed));
-        std::cout << "Found " << std::get<0>(locFunc) << " with n:" << n << " and r:" << r << " permute:" << permute << std::endl;
+        //std::cout << "Found " << std::get<0>(locFunc) << " with n:" << n << " and r:" << r << " permute:" << permute << std::endl;
         
         eq.erase(std::get<1>(locFunc) - n.size() - 1, n.size() + 7 + r.size());
         eq.insert(std::get<1>(locFunc) - n.size() - 1,
@@ -425,14 +441,14 @@ cmplx Evaluate(std::string eq) {
     }
 
     // OPERATORS ========================================================= OPERATORS
-    std::cout << "Finding operators..." << std::endl;
+    //std::cout << "Finding operators..." << std::endl;
     ubyte curOp = 0;
     size_t progress = 1;
     bool DNC = false;
     const char ops[] = { '/', '*', '-', '+' };
     while (DNC || isNan(ParseComplex(eq))) {
         if ((progress = eq.find(ops[curOp], progress)) == std::string::npos) {
-            std::cout << "Could not find operator " << ops[curOp] << " in eq: " << eq << std::endl;
+            //std::cout << "Could not find operator " << ops[curOp] << " in eq: " << eq << std::endl;
             curOp++;
             if (curOp > 3) break; // something went wrong and it found and evaluated all operators, but it's not a parseable number at the end?
 
@@ -443,7 +459,7 @@ cmplx Evaluate(std::string eq) {
         DNC = false;
 
         if ((curOp == 2 || curOp == 3) && eq[progress - 1] == 'e') {
-            std::cout << "Skipping exponent operator" << std::endl;
+            //std::cout << "Skipping exponent operator" << std::endl;
             progress++;
             continue;
         }
@@ -451,19 +467,21 @@ cmplx Evaluate(std::string eq) {
         std::string first = FindCmplx(eq, progress, true);
         std::string second = FindCmplx(eq, progress, false);
 
-        std::cout << "Progress: " << progress << " Found operator " << ops[curOp] << " with first " << ParseComplex(first) << " and second " << ParseComplex(second) << std::endl;
-        std::cout << "Result of operation: " << CmplxToStr(operate(curOp, ParseComplex(first), ParseComplex(second))) << std::endl;
+        //std::cout << "Progress: " << progress << " Found operator " << ops[curOp] << " with first " << ParseComplex(first) << " and second " << ParseComplex(second) << std::endl;
+        //std::cout << "Result of operation: " << CmplxToStr(operate(curOp, ParseComplex(first), ParseComplex(second))) << std::endl;
 
         if (first.empty()) {
-            std::cout << "First is empty!" << std::endl;
+            //std::cout << "First is empty!" << std::endl;
             progress++;
             continue;
         }
         
-        if (eq[progress - first.size() - 1] == '(' &&
+        if (progress - first.size() - 1 > 0 &&
+            progress + second.size() + 1 < eq.size() && 
+            eq[progress - first.size() - 1] == '(' &&
             eq[progress + second.size() + 1] == ')'
         ) {
-            std::cout << "Operation is already a number" << std::endl;
+            //std::cout << "Operation is already a number" << std::endl;
             progress++;
             continue;
         }
@@ -471,18 +489,18 @@ cmplx Evaluate(std::string eq) {
         if (eq[0] == '-' && first.size() + 1 == progress)
             first = '-' + first;
 
-        std::cout << "Old eq: " << eq << std::endl;
+        //std::cout << "Old eq: " << eq << std::endl;
         eq.erase(progress - first.size(), first.size() + 1 + second.size());
 
         std::string toReplace = CmplxToStr(operate(curOp, ParseComplex(first), ParseComplex(second)));
         eq.insert(progress - first.size(), toReplace);
-        std::cout << "new eq: '" << eq << '\'' << std::endl;
+        //std::cout << "new eq: '" << eq << '\'' << std::endl;
 
         progress += (toReplace.size() - first.size());
-        std::cout << "new progress: " << progress << std::endl;
+        //std::cout << "new progress: " << progress << std::endl;
     }   
 
-    std::cout << "Finished evaluating... ans: " << eq << std::endl;
+    //std::cout << "Finished evaluating... ans: " << eq << std::endl;
     return ParseComplex(eq);
 } // End error scope (Not evaluate)
 
