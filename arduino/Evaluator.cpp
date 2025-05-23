@@ -133,15 +133,11 @@ std::string FindCmplx(std::string str, ubyte loc, bool before) {
     ubyte plusCount = 0;
     bool isEnd = false;
     std::string reason = "";
-    if (loc + (before ? -1 : 1) <= 0) goto ERROR;
 
     for (ubyte i = loc + (before ? -1 : 1); 
         before ? (i >= 0) : (i < str.size()); 
         i += (before ? -1 : 1)
     ) {
-        std::cout << int(i) << std::flush;
-        std::cout << ": " << str[i] << std::endl;
-
         isEnd = i == (before ? 0 : str.size() - 1);
         if (isEnd)
             return before ? str.substr(i, loc - i) : str.substr(loc + 1, i - loc);
