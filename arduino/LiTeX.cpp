@@ -21,9 +21,10 @@ std::string Between(std::string str, ubyte start, char char1, char char2, bool r
                 : std::string(&str[c1Indx + 1], &str[i]);
             }
         }
+        if (i == 0 && reverse) break;
     }
 
-    std::cerr << "COULD NOT FIND CONTENTS BETWEEN " + std::string(1, char1) + " AND " + std::string(1, char2) + " IN " + str + "." << std::endl;
+    //std::cout << "COULD NOT FIND CONTENTS BETWEEN " + std::string(1, char1) + " AND " + std::string(1, char2) + " IN " + str + "." << std::endl;
     return "ERROR";
 }
 
@@ -136,7 +137,7 @@ Render GenerateRender(std::string eq, bool exp = false) {
 
                 // No valid special was found
                 if (escSeq == "ERROR") {
-                    std::cerr << "INVALID ESCAPE SEQUNCE AT: '" << eq.substr(i) << "'" << std::endl;
+                    //std::cout << "INVALID ESCAPE SEQUNCE AT: '" << eq.substr(i) << "'" << std::endl;
                     return Render(std::vector<ull>(), 0);
                 }
             }
@@ -208,7 +209,7 @@ Render GenerateRender(std::string eq, bool exp = false) {
             }
         }
         else {
-            std::cerr << "UNIDENTIFIED CHARACTER: '" << eq[i] << "' AT INDEX " << int(i) << std::endl;
+            //std::cout << "UNIDENTIFIED CHARACTER: '" << eq[i] << "' AT INDEX " << int(i) << std::endl;
         }
     }
 

@@ -51,26 +51,34 @@ Render Graph(std::string eq, float scaleX = 0.125f, float scaleY = 0.125f, bool 
         Render scale = GenerateRender(CmplxToStr(scaleX * 8), true);
         graph = MergeRenders(graph, scale, pos + 4 - (scale.bitmap.size() / 2), 7);
     }
-
+    float traceY = NaN.real();
     if (traceX >= 0) {
-        coord = GenerateRender(ReplaceAll("(" + CmplxToStr((traceX - 64) * scaleX, 3) + "," + CmplxToStr(Evaluate(ReplaceAll(eq, "x", "(" + CmplxToStr((traceX - 64) * scaleX) + ")")).real(), 3) + ")", "-", "~"), true);
+        cmplx traceEval = Evaluate(ReplaceAll(eq, "x", "(" + CmplxToStr((traceX - 64) * scaleX) + ")"));
+        if (traceEval.imag() > 0.001L) { traceEval = NaN; } 
+        
+        coord = GenerateRender(ReplaceAll("(" + CmplxToStr((traceX - 64) * scaleX, 3) + "," + CmplxToStr(traceEval.real(), 3) + ")", "-", "~"), true);
+        
         if (coord.bitmap.size() >= 63)
             graph.bitmap[64] &= ULLONG_MAX >> 8;
     }
 
     // Calculate values and plot
-    float y = 0, traceY = 0;
+    float y = 0;
     ull ybmap = 0, prevYbmap = 0, traceYbmap = 0;
-    cmplx eval = 0, traceEval = 0;
+    cmplx eval = 0;
     for (sbyte i = 0; i <= 126; i++) {
         eval = Evaluate(ReplaceAll(eq, "x", "(" + CmplxToStr((i - 64) * scaleX) + ")"));
-        if (std::abs(eval.imag()) > 0.001L) continue;
+        if (std::abs(eval.imag()) > 0.001L) { 
+            std::cout << "Imaginary portion too large: " << CmplxToStr(eval) << std::endl;
+            prevYbmap = 0; 
+            continue;  
+        }
         
         y = std::round(eval.real() * (1 / scaleY));
         ybmap = (-29 <= y && y < 32) ? 1ull << ((int)y + 32) : 0;
         
-        if (i == traceX) { traceY = y; traceEval = eval; }
-        if ((i >= graph.bitmap.size() - coord.bitmap.size() - 1) && y >= 25) continue;
+        if (i == traceX && !isNan(eval)) traceY = y;
+        if ((i >= graph.bitmap.size() - coord.bitmap.size() - 1) && y >= 25) { prevYbmap = 0; continue; }
 
         //std::cout << "Placing coordinate (" << (int)(i - 64) << ", " << y << ")  bmap: " << ybmap << std::endl;
         MaskedOr(graph, ybmap, i, false);
@@ -82,8 +90,12 @@ Render Graph(std::string eq, float scaleX = 0.125f, float scaleY = 0.125f, bool 
 
     if (traceX >= 0) {
         ull traceYbmap = (-29 <= traceY && traceY < 32) ? 1ull << ((int)traceY + 32) : 0;
-
-        if (-29 <= traceY && traceY < 32 && !(traceX >= 127 - coord.bitmap.size() && traceY >= 23)) {
+        if (isNan(traceY)){
+            MaskedOr(graph, 0x280000000, traceX - 1, false);
+            MaskedOr(graph, 0x100000000, traceX, true);
+            MaskedOr(graph, 0x280000000, traceX + 1, true);
+        }
+        else if (-29 <= traceY && traceY < 32 && !(traceX >= 127 - coord.bitmap.size() && traceY >= 23)) {
             // Outline point on graph
             MaskedOr(graph, (traceYbmap << 1) | traceYbmap | (traceYbmap >> 1), traceX - 2, false);
             MaskedOr(graph, traceYbmap << 2, traceX - 1, true);

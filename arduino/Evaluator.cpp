@@ -12,7 +12,7 @@ typedef std::complex<long double> cmplx;
 typedef long double ldub;
 
 const cmplx NaN(std::nan("0"), std::nan("0"));
-inline bool isNan(cmplx z) { return z != z; }
+inline bool isNan(cmplx z) { return isnan(z.real()) || isnan(z.imag()); }
 
 inline sbyte sgn(long double val) {
     return (0 < val) - (val < 0);
@@ -204,7 +204,7 @@ void AddImpMultTo(std::string& eq) {
     }
     return;
 ERROR:
-    //std::cerr << "EQUATION BECAME TOO LARGE WHILE ADDING IMPLICIT MULTIPLICATION IN EQ: " << eq << std::endl;
+    std::cerr << "EQUATION BECAME TOO LARGE WHILE ADDING IMPLICIT MULTIPLICATION IN EQ: " << eq << std::endl;
     std::terminate();
 }
 
@@ -286,6 +286,56 @@ cmplx factorial(cmplx z) {
         : std::sqrt(cmplx(2*M_PI, 0) / (z += 1)) * std::pow((z / cmplx(M_E, 0)) * std::sqrt(z * cmplx(0, -1) * std::sin(cmplx(0, 1) / z)), z);
 }
 
+// Approximate a floating point number as a rational fraction p/q
+void approximateFraction(long double value, long long &p, long long &q, long long maxDenominator = 1000000) {
+    long double frac = value;
+    long long a = static_cast<long long>(frac);
+    long long prev_n = 1, n = a;
+    long long prev_d = 0, d = 1;
+    long double remainder = frac - a;
+
+    const long double epsilon = 1e-10;
+
+    while (fabs(remainder) > epsilon && d < maxDenominator) {
+        frac = 1.0 / remainder;
+        a = static_cast<long long>(frac);
+        long long temp_n = n, temp_d = d;
+        n = a * n + prev_n;
+        d = a * d + prev_d;
+        prev_n = temp_n;
+        prev_d = temp_d;
+        remainder = frac - a;
+    }
+
+    p = n;
+    q = d;
+}
+
+cmplx nonPrincipalPow(cmplx cbase, cmplx cexponent) {
+    using namespace std;
+
+    // If base or exponent is complex, use std::pow
+    if (cbase.imag() != 0.0 || cexponent.imag() != 0.0)
+        return pow(cbase, cexponent);
+
+    long double base = cbase.real();
+    long double exponent = cexponent.real();
+
+    // Handle negative real base with rational exponent
+    if (base < 0) {
+        long long p, q;
+        approximateFraction(exponent, p, q);
+
+        if (q % 2 == 1) {  // Odd denominator
+            long double root = pow(-base, static_cast<long double>(p) / q);
+            return cmplx(-root, 0);  // Real negative result
+        }
+    }
+
+    // General case
+    return pow(cbase, cexponent);
+}
+
 // EVALUATE ========================================================================== EVALUATE
 cmplx Evaluate(std::string eq) {
     //std::cout << "Evaluating eq " << eq << " (len: " << eq.size() << ")" << std::endl;
@@ -361,7 +411,7 @@ cmplx Evaluate(std::string eq) {
         std::string root = Between(eq, loc + 7 + nth.size(), '{', '}');
 
         eq.erase(loc, nth.size() + 9 + root.size());
-        eq.insert(loc, CmplxToStr(pow(Evaluate(root), cmplx(1, 0) / Evaluate(nth))));
+        eq.insert(loc, CmplxToStr(nonPrincipalPow(Evaluate(root), cmplx(1, 0) / Evaluate(nth))));
     }
 
     // FRACTIONS
@@ -385,7 +435,7 @@ cmplx Evaluate(std::string eq) {
 
         eq.erase(loc - base.size() - (isParen ? 2 : 0), base.size() + (isParen ? 5 : 3) + exp.size());
         eq.insert(loc - base.size()- (isParen ? 2 : 0), 
-            CmplxToStr(std::pow(ParseComplex(base), Evaluate(exp))));
+            CmplxToStr(nonPrincipalPow(ParseComplex(base), Evaluate(exp))));
     }
 
     loc = -1;
@@ -463,27 +513,27 @@ cmplx Evaluate(std::string eq) {
         std::string first = FindCmplx(eq, progress, true);
         std::string second = FindCmplx(eq, progress, false);
 
-        //std::cout << "Progress: " << progress << " Found operator " << ops[curOp] << " with first " << ParseComplex(first) << " and second " << ParseComplex(second) << std::endl;
-        //std::cout << "Result of operation: " << CmplxToStr(operate(curOp, ParseComplex(first), ParseComplex(second))) << std::endl;
-
         if (first.empty()) {
             //std::cout << "First is empty!" << std::endl;
             progress++;
             continue;
         }
-        
-        if (progress - first.size() - 1 > 0 &&
-            progress + second.size() + 1 < eq.size() && 
-            eq[progress - first.size() - 1] == '(' &&
-            eq[progress + second.size() + 1] == ')'
-        ) {
+
+        if (Between(eq, max(0, (short)progress - first.size() - 1), '(', ')') == first + ops[curOp] + second) {
             //std::cout << "Operation is already a number" << std::endl;
+            progress++;
+            continue;
+        }
+        if (curOp == 2 && progress > 0 && eq[progress - 1] == '(') {
             progress++;
             continue;
         }
 
         if (eq[0] == '-' && first.size() + 1 == progress)
             first = '-' + first;
+
+        //std::cout << "Progress: " << progress << " Found operator " << ops[curOp] << " with first " << ParseComplex(first) << " and second " << ParseComplex(second) << std::endl;
+        //std::cout << "Result of operation: " << CmplxToStr(operate(curOp, ParseComplex(first), ParseComplex(second))) << std::endl;
 
         //std::cout << "Old eq: " << eq << std::endl;
         eq.erase(progress - first.size(), first.size() + 1 + second.size());
@@ -501,6 +551,6 @@ cmplx Evaluate(std::string eq) {
 } // End error scope (Not evaluate)
 
 ERROR:
-    std::cerr << "                                                    >>> COULD NOT EVALUATE EQ'" << eq << "' (" << reason << ")" << std::endl;
+    //std::cerr << "                                                    >>> COULD NOT EVALUATE EQ'" << eq << "' (" << reason << ")" << std::endl;
     return NaN;
 } // End evaluate
