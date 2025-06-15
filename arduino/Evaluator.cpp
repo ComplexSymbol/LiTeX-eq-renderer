@@ -1,47 +1,55 @@
-#include <iostream>
-#include <sstream>
-#include <iomanip>
-#include <cmath>
-#include <complex>
-#include <string>
-#include <vector>
-#include <map>
-#include "LiTeX.cpp"
+#include <Evaluator.h>
+ 
+typedef std::complex<double> cmplx;
 
-typedef std::complex<long double> cmplx;
-typedef long double ldub;
+const cmplx NaN(NAN, NAN);
+bool isNan(cmplx z) { return isnan(z.real()) || isnan(z.imag()); }
 
-const cmplx NaN(std::nan("0"), std::nan("0"));
-inline bool isNan(cmplx z) { return isnan(z.real()) || isnan(z.imag()); }
+double SafeStod(std::string str) {
+    std::istringstream iss(str);
+    double num;
+    
+    if (!(iss >> num).fail())
+        return std::stod(str);
+    
+    SerialPrintlnString("CRITICAL: Failed to convert string '" + str + "' to ld.");
+    return NAN;
+}
 
-inline sbyte sgn(long double val) {
+sbyte sgn(double val) {
     return (0 < val) - (val < 0);
 }
 
-ldub roundLD(ldub var, ubyte prec) {
+double roundD(double var, ubyte prec) {
+    SerialPrintlnString("    Rounding " + dtos(var) + " to " + std::to_string(prec) + " decimal points");
     char str[40];
 
-    sprintf(str, "%.*Lf", prec, var);
-    sscanf(str, "%Lf", &var); 
+    sprintf(str, "%.*lf", prec, var);
+    sscanf(str, "%lf", &var);
+
+    SerialPrintlnString((std::string)"    Result: " + dtos(var));
 
     return var; 
 }
 
-std::string CmplxToStr(cmplx z, ubyte prec = 10, bool forRender = false) {
-    z.real(roundLD(z.real(), prec));
-    z.imag(roundLD(z.imag(), prec));
+std::string CmplxToStr(cmplx z, ubyte prec, bool forRender) {
+    SerialPrintlnString((std::string)"  CmplxToStr: Converting complex with real: " + dtos(z.real()) + " and imaginary: " + dtos(z.imag()) + "i with precision: " + std::to_string(prec));
+
+    z.real(roundD(z.real(), prec));
+    z.imag(roundD(z.imag(), prec));
     
     return (z.imag() == 0 || z.real() == 0)
-         ? (std::stringstream() << (z.imag() == 0 ? z.real() : z.imag()) << (z.imag() == 0 ? "" : (forRender ? "\\im" : "i"))).str()
-         : (std::stringstream() << "(" << z.real() << (sgn(z.imag()) >= 0 ? "+" : "") << z.imag() << "i)").str();
+        ? (dtos(z.imag() == 0 ? z.real() : z.imag()) + (z.imag() == 0 ? "" : (forRender ? "\\im" : "i")))
+        : ("(" + dtos(z.real()) + (sgn(z.imag()) >= 0 ? "+" : "") + dtos(z.imag()) + "i)");
+    SerialPrintlnString("  Done!");
 }
 
 // PARSE COMPLEX ===================================================================== PARSE COMPLEX
 cmplx ParseComplex(std::string str) {
     if (str == "(nan+nani)") return NaN;
 
-    long double real = 0;
-    long double imag = 0;
+    double real = 0;
+    double imag = 0;
     bool opFound = false;
     ubyte start = 0;
     std::string reason = "";
@@ -49,14 +57,20 @@ cmplx ParseComplex(std::string str) {
 PARSE_START:
     ubyte stop = str.size() - (str[str.size() - 1] == ')' ? 1 : 0);
     start += (str[0] == '(' && start == 0 ? 1 : 0);
+
+    SerialPrintlnString("Parsing: Iterating over '" + str + "' from " + dtos(start) + " to " + dtos(stop));
     for (ubyte i = start; i < stop; i++) {
         if (i == start && str[i] == '-') continue;
         
         bool isEnd = i == stop - 1;
 
         if (str[i] == '-' || str[i] == '+') {
-            if (str[i - 1] == 'e')
-                continue; // It's fine guys. Don't worry about the exponent
+            SerialPrintlnString("  Found operator");
+
+            if (str[i - 1] == 'e') {
+                SerialPrintlnString("    Operator part of exponent");
+                continue; //Don't worry about the exponent
+            }
             
             opFound = true;
             
@@ -65,10 +79,15 @@ PARSE_START:
                     reason = "Multiple imaginary parts found";
                     goto ERROR; // Woah, we already found imag part
                 }
+
+                SerialPrintlnString("  Found imaginary literal before operator");
                 
                 std::string strImag = str.substr(start, i - start + (isEnd ? 0 : -1));
                 if (strImag.empty()) strImag = "1"; // Otherwise (1+i) => Error
-                imag = std::stold(strImag);
+                
+                SerialPrintlnString("    Setting imaginary portion using stod...");
+                imag = SafeStod(strImag);
+                SerialPrintlnString("    Done");
                 
                 break; // Let's get out of here
             }
@@ -78,17 +97,23 @@ PARSE_START:
                     goto ERROR; // Woah, we already found real part
                 }
 
-                real = std::stold(str.substr(start, i - start + (isEnd ? 1 : 0)));
+                SerialPrintlnString("  Found real literal before operator");
+
+                SerialPrintlnString("   Setting imaginary portion using stod...");
+                real = SafeStod(str.substr(start, i - start + (isEnd ? 1 : 0)));
+                SerialPrintlnString("   Done");
+
                 start = i + (str[i] == '+' ? 1 : 0);
                 
                 if (!isEnd)
                     goto PARSE_START; // Restart parsing cuz there still might be imag part
+                // End of string
                 break;
             }
         }
 
         if (!(isdigit(str[i]) || str[i] == 'e' || str[i] == '.' || str[i] == 'i')) {
-            reason = "Unrecongized character " + std::string(1, str[i]);
+            reason = "Unrecongized character at index " + std::to_string(i) + ":" + std::string(1, str[i]);
             goto ERROR;
         }
 
@@ -98,17 +123,20 @@ PARSE_START:
                 goto ERROR;
             }
             std::string coeff = str.substr(start, i - start);
-            imag = std::stold(coeff != "" ? (coeff != "-" ? coeff : "-1") : "1");
+            imag = SafeStod(coeff != "" ? (coeff != "-" ? coeff : "-1") : "1");
+            return cmplx(real, imag);
         }
 
-        else if (isEnd) {
-            // Because other parts would catch an imaginary number, the number must be real
+        if (isEnd) {
+            // Because the if statement above would catch an imaginary number, the number must be real
             // Or, in the erroneous format a+a
             if (opFound || str[0] == '(') {
-                reason = "Invalid format";
-            goto ERROR;
+                reason = "Invalid format (a+a)";
+                goto ERROR;
             }
-            return cmplx(std::stold(str));
+            SerialPrintlnString("Finished Parsing; format: (a+0i)");
+            SerialPrintlnString("Converting string using stod...");
+            return cmplx(SafeStod(str));
         }
     }
 
@@ -119,10 +147,11 @@ PARSE_START:
         goto ERROR;
     }
 
+    SerialPrintlnString("Successfully parsed complex '" + str + "'");
     return cmplx(real, imag);
     
 ERROR:
-    //std::cerr << "                                                    >>> COULD NOT PARSE '" << str << "' FOR COMPLEX (" << reason << ")" << std::endl;
+    SerialPrintlnString("                                                    >>> COULD NOT PARSE '" + str + "' FOR COMPLEX (" + reason + ")");
     return NaN;
 }
 
@@ -180,8 +209,7 @@ std::string FindCmplx(std::string str, ubyte loc, bool before) {
         }
     }
 
-ERROR:
-    //std::cerr << "                                                    >>> COULD NOT FIND COMPLEX IN STR " << str << " (loc: " << (int)loc << ") Reason: " << reason << std::endl;
+    SerialPrintlnString("                                                    >>> COULD NOT FIND COMPLEX IN STR " + str + " (loc: " + dtos(loc) + ") Reason: " + reason);
     return "";
 }
 
@@ -204,8 +232,10 @@ void AddImpMultTo(std::string& eq) {
     }
     return;
 ERROR:
-    std::cerr << "EQUATION BECAME TOO LARGE WHILE ADDING IMPLICIT MULTIPLICATION IN EQ: " << eq << std::endl;
-    std::terminate();
+    SerialPrintlnString("EQUATION BECAME TOO LARGE WHILE ADDING IMPLICIT MULTIPLICATION IN EQ: " + eq);
+    SerialPrintlnString("EXITING...");
+    //kill_SPI();
+    exit(0);
 }
 
 // TRIG MAPS AND OPS ================================================================= TRIG MAPS AND OPS
@@ -253,7 +283,7 @@ auto operate = [](ubyte op, cmplx a, cmplx b) {
 };
 
 // MULTI FIND ======================================================================== MULTI FIND
-std::tuple<std::string, ubyte> FindMultiple(std::string &eq, std::vector<std::string> finds, std::vector<std::string> replace = {}) {
+std::tuple<std::string, ubyte> FindMultiple(std::string &eq, std::vector<std::string> finds, std::vector<std::string> replace) {
     bool noReplace = replace == std::vector<std::string>({});
     for (ubyte i = 0; i < size(eq); i++) {
         for (ubyte n = 0; n < finds.size(); n++) {
@@ -271,12 +301,14 @@ std::tuple<std::string, ubyte> FindMultiple(std::string &eq, std::vector<std::st
     }
 
     //if (!noReplace)
-    //    std::cerr << "                                                    >>> COULD NOT FIND MULTIPLES IN EQ: '" << eq << "'" << std::endl;
+    //    SerialPrintlnString("                                                    >>> COULD NOT FIND MULTIPLES IN EQ: '" + eq + "'");
     return std::tuple<std::string, ubyte>("", 0xFF);
 
 ERROR:
-    std::cerr << "EQUATION BECAME TOO LARGE WHILE REPLACING MULTIPLES IN EQ: '" << eq << "'" << std::endl;
-    std::terminate();
+    SerialPrintlnString("EQUATION BECAME TOO LARGE WHILE REPLACING MULTIPLES IN EQ: '" + eq + "'");
+    SerialPrintlnString("EXITING...");
+    //kill_SPI();
+    exit(0);
 }
 
 // ADDITIONAL MATH FUNCS ============================================================= ADDITIONAL MATH FUNCS
@@ -287,14 +319,14 @@ cmplx factorial(cmplx z) {
 }
 
 // Approximate a floating point number as a rational fraction p/q
-void approximateFraction(long double value, long long &p, long long &q, long long maxDenominator = 1000000) {
-    long double frac = value;
+void approximateFraction(double value, long long &p, long long &q, long long maxDenominator) {
+    double frac = value;
     long long a = static_cast<long long>(frac);
     long long prev_n = 1, n = a;
     long long prev_d = 0, d = 1;
-    long double remainder = frac - a;
+    double remainder = frac - a;
 
-    const long double epsilon = 1e-10;
+    const double epsilon = 1e-10;
 
     while (fabs(remainder) > epsilon && d < maxDenominator) {
         frac = 1.0 / remainder;
@@ -318,8 +350,8 @@ cmplx nonPrincipalPow(cmplx cbase, cmplx cexponent) {
     if (cbase.imag() != 0.0 || cexponent.imag() != 0.0)
         return pow(cbase, cexponent);
 
-    long double base = cbase.real();
-    long double exponent = cexponent.real();
+    double base = cbase.real();
+    double exponent = cexponent.real();
 
     // Handle negative real base with rational exponent
     if (base < 0) {
@@ -327,7 +359,7 @@ cmplx nonPrincipalPow(cmplx cbase, cmplx cexponent) {
         approximateFraction(exponent, p, q);
 
         if (q % 2 == 1) {  // Odd denominator
-            long double root = pow(-base, static_cast<long double>(p) / q);
+            double root = pow(-base, static_cast<double>(p) / q);
             return cmplx(-root, 0);  // Real negative result
         }
     }
@@ -336,9 +368,8 @@ cmplx nonPrincipalPow(cmplx cbase, cmplx cexponent) {
     return pow(cbase, cexponent);
 }
 
-// EVALUATE ========================================================================== EVALUATE
 cmplx Evaluate(std::string eq) {
-    //std::cout << "Evaluating eq " << eq << " (len: " << eq.size() << ")" << std::endl;
+    SerialPrintlnString("Evaluating eq " + eq + " (len: " + std::to_string(eq.size()) + ")");
     std::string reason = "";
 { // Scope so that 'goto ERROR' will not bypass variable initialization
     if (eq.size() >= 0xFF) {
@@ -347,9 +378,12 @@ cmplx Evaluate(std::string eq) {
     }
 
     // SETUP EQUATION
-    {   cmplx test; // Is eq a number? (Scope so test is del)
-        //std::cout << "Testing whether eq is complex..." << std::endl;
-        if (!isNan(test = ParseComplex(eq))) return test;   }
+    {   
+        cmplx test; // Is eq a number? (Scope so test is del)
+        SerialPrintlnString("Testing whether eq is complex...");
+        if (!isNan(test = ParseComplex(eq))) return test;   
+        SerialPrintlnString("Done! (Not complex)");
+    }
 
     AddImpMultTo(eq);
     
@@ -365,9 +399,9 @@ cmplx Evaluate(std::string eq) {
             != std::tuple<std::string, ubyte>("", 0xFF)) {}
 
         // TRIGONOMETRIC FUNCTIONS
-        //std::cout << "Finding trig functions..." << std::endl;
-        while((loc = FindMultiple(eq, std::vector<std::string>({ "sin", "cos", "tan", "sec", "csc", "cot", "sinh", "cosh", "tanh", "sin^{-1}", "cos^{-1}", "tan^{-1}" }))) != std::tuple<std::string, ubyte>("", 0xFF)) {
-            //std::cout << "Found trig function " << std::get<0>(loc) << std::endl;
+        SerialPrintlnString("Finding trig functions...");
+        while((loc = FindMultiple(eq, std::vector<std::string>({ "sin^{-1}", "cos^{-1}", "tan^{-1}", "sinh", "cosh", "tanh", "sin", "cos", "tan", "sec", "csc", "cot" }))) != std::tuple<std::string, ubyte>("", 0xFF)) {
+            SerialPrintlnString("Found trig function " + std::get<0>(loc));
             std::string contents = Between(eq, std::get<1>(loc) + std::get<0>(loc).size(), '(', ')');
             
             eq.erase(std::get<1>(loc), std::get<0>(loc).size() + contents.size() + 2);
@@ -376,7 +410,7 @@ cmplx Evaluate(std::string eq) {
     }
 
     AddImpMultTo(eq);
-    //std::cout << "Evaluating standardized equation " << eq << std::endl;
+    SerialPrintlnString("Evaluating standardized equation " + eq);
 
     // LOGARITHMS
     size_t loc = -1;
@@ -393,7 +427,7 @@ cmplx Evaluate(std::string eq) {
     loc = -1;
     while ((loc = eq.find('(', loc + 1)) != std::string::npos) {
         std::string contents = Between(eq, loc, '(', ')');
-        //std::cout << "Found parenthesis with contents: " << contents << std::endl;
+        SerialPrintlnString("Found parenthesis with contents: " + contents);
         bool beforeExp = eq[loc + contents.size() + 2] == '^';
 
         cmplx toRepl = ParseComplex("(" + contents + ")");
@@ -402,7 +436,7 @@ cmplx Evaluate(std::string eq) {
         eq.erase(loc, contents.size() + 2);
         eq.insert(loc, beforeExp ? "(" + CmplxToStr(toRepl) + ")" : CmplxToStr(toRepl));
     }
-    //std::cout << "EQ after paren: " << eq << std::endl;
+    SerialPrintlnString("EQ after paren: " + eq);
     
     // RADICALS
     loc = -1;
@@ -431,7 +465,7 @@ cmplx Evaluate(std::string eq) {
 
         std::string exp = Between(eq, loc + 1, '{', '}');
         std::string base = isParen ? Between(eq, loc - 1, ')', '(', true) : FindCmplx(eq, loc, true);
-        //std::cout << "(isparen: " << isParen << ") Found exponent with base " << base << " and exponent " << exp << std::endl;
+        SerialPrintlnString("(isparen: " + std::to_string(isParen) + ") Found exponent with base " + base + " and exponent " + exp);
 
         eq.erase(loc - base.size() - (isParen ? 2 : 0), base.size() + (isParen ? 5 : 3) + exp.size());
         eq.insert(loc - base.size()- (isParen ? 2 : 0), 
@@ -445,7 +479,7 @@ cmplx Evaluate(std::string eq) {
         if (eq[0] == '-' && num.size() + 1 == loc)
             num = '-' + num;
 
-        //std::cout << "Found factorial with number " << ParseComplex(num) << std::endl;
+        SerialPrintlnString("Found factorial with number " + CmplxToStr(ParseComplex(num)));
         if (ParseComplex(num).real() < 0) {
             reason = "Factorial only supported for Re(z) >= 0";
             goto ERROR;
@@ -469,7 +503,7 @@ cmplx Evaluate(std::string eq) {
         cmplx Rparsed = ParseComplex(r);
         
         cmplx permute = factorial(Nparsed) / (factorial(Nparsed - Rparsed));
-        //std::cout << "Found " << std::get<0>(locFunc) << " with n:" << n << " and r:" << r << " permute:" << permute << std::endl;
+        SerialPrintlnString("Found " + std::get<0>(locFunc) + " with n:" + n + " and r:" + r + " permute:" + CmplxToStr(permute));
         
         eq.erase(std::get<1>(locFunc) - n.size() - 1, n.size() + 7 + r.size());
         eq.insert(std::get<1>(locFunc) - n.size() - 1,
@@ -487,14 +521,14 @@ cmplx Evaluate(std::string eq) {
     }
 
     // OPERATORS ========================================================= OPERATORS
-    //std::cout << "Finding operators..." << std::endl;
+    SerialPrintlnString("Finding operators...");
     ubyte curOp = 0;
     size_t progress = 1;
     bool DNC = false;
     const char ops[] = { '/', '*', '-', '+' };
     while (DNC || isNan(ParseComplex(eq))) {
         if ((progress = eq.find(ops[curOp], progress)) == std::string::npos) {
-            //std::cout << "Could not find operator " << ops[curOp] << " in eq: " << eq << std::endl;
+            SerialPrintlnString((std::string)"Could not find operator " + ops[curOp] + " in eq: " + eq);
             curOp++;
             if (curOp > 3) break; // something went wrong and it found and evaluated all operators, but it's not a parseable number at the end?
 
@@ -505,7 +539,7 @@ cmplx Evaluate(std::string eq) {
         DNC = false;
 
         if ((curOp == 2 || curOp == 3) && eq[progress - 1] == 'e') {
-            //std::cout << "Skipping exponent operator" << std::endl;
+            SerialPrintlnString("Skipping exponent operator");
             progress++;
             continue;
         }
@@ -514,13 +548,13 @@ cmplx Evaluate(std::string eq) {
         std::string second = FindCmplx(eq, progress, false);
 
         if (first.empty()) {
-            //std::cout << "First is empty!" << std::endl;
+            SerialPrintlnString("First is empty!");
             progress++;
             continue;
         }
 
         if (Between(eq, max(0, (short)progress - first.size() - 1), '(', ')') == first + ops[curOp] + second) {
-            //std::cout << "Operation is already a number" << std::endl;
+            SerialPrintlnString("Operation is already a number");
             progress++;
             continue;
         }
@@ -532,25 +566,25 @@ cmplx Evaluate(std::string eq) {
         if (eq[0] == '-' && first.size() + 1 == progress)
             first = '-' + first;
 
-        //std::cout << "Progress: " << progress << " Found operator " << ops[curOp] << " with first " << ParseComplex(first) << " and second " << ParseComplex(second) << std::endl;
-        //std::cout << "Result of operation: " << CmplxToStr(operate(curOp, ParseComplex(first), ParseComplex(second))) << std::endl;
+        SerialPrintlnString("Progress: " + std::to_string(progress) + " Found operator " + ops[curOp] + " with first " + CmplxToStr(ParseComplex(first)) + " and second " + CmplxToStr(ParseComplex(second)));
+        SerialPrintlnString("Result of operation: " + CmplxToStr(operate(curOp, ParseComplex(first), ParseComplex(second))));
 
-        //std::cout << "Old eq: " << eq << std::endl;
+        SerialPrintlnString("Old eq: " + eq);
         eq.erase(progress - first.size(), first.size() + 1 + second.size());
 
         std::string toReplace = CmplxToStr(operate(curOp, ParseComplex(first), ParseComplex(second)));
         eq.insert(progress - first.size(), toReplace);
-        //std::cout << "new eq: '" << eq << '\'' << std::endl;
+        SerialPrintlnString("new eq: '" + eq + '\'');
 
         progress += (toReplace.size() - first.size());
-        //std::cout << "new progress: " << progress << std::endl;
+        SerialPrintlnString("new progress: " + progress);
     }   
 
-    //std::cout << "Finished evaluating... ans: " << eq << std::endl;
+    SerialPrintlnString("Finished evaluating... ans: " + eq);
     return ParseComplex(eq);
 } // End error scope (Not evaluate)
 
 ERROR:
-    //std::cerr << "                                                    >>> COULD NOT EVALUATE EQ'" << eq << "' (" << reason << ")" << std::endl;
+    SerialPrintlnString("                                                    >>> COULD NOT EVALUATE EQ! (" + reason + ")");
     return NaN;
 } // End evaluate

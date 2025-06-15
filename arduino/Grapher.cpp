@@ -1,5 +1,4 @@
-#include "Evaluator.cpp"
-#include <algorithm>
+#include <Grapher.h>
 
 std::string ReplaceAll(std::string str, const std::string from, const std::string to) {
     size_t start_pos = 0;
@@ -10,7 +9,7 @@ std::string ReplaceAll(std::string str, const std::string from, const std::strin
     return str;
 }
 
-void MaskedOr(Render &render, ull toOR, sbyte index, bool rightOnly = false) {
+void MaskedOr(Render &render, ull toOR, ubyte index, bool rightOnly = false) {
     if (index < 0) return;
 
     if (index != 0 && !rightOnly) {
@@ -30,11 +29,11 @@ void MaskedOr(Render &render, ull toOR, sbyte index, bool rightOnly = false) {
     render.bitmap[index] |= toOR;
 }
 
-Render Graph(std::string eq, float scaleX = 0.125f, float scaleY = 0.125f, bool showScale = false, sbyte traceX = -1) {
+Render Graph(std::string eq, float scaleX, float scaleY, bool showScale, sbyte traceX) {
     Render graph = Render(std::vector<ull>(128, 4294967296ull), 64);
     Render coord = Render(std::vector<ull>({ 0 }), 1);
 
-    graph.bitmap[64] = ULLONG_MAX;
+    graph.bitmap[64] = (9223372036854775807LL*2ULL+1ULL);
     for (ubyte i = 1; i != 127; i++)
         if (i % 4 == 0)
             graph.bitmap[i] |= (i % 8 == 0 ? 0b11 : 0b1);
@@ -51,6 +50,7 @@ Render Graph(std::string eq, float scaleX = 0.125f, float scaleY = 0.125f, bool 
         Render scale = GenerateRender(CmplxToStr(scaleX * 8), true);
         graph = MergeRenders(graph, scale, pos + 4 - (scale.bitmap.size() / 2), 7);
     }
+
     float traceY = NaN.real();
     if (traceX >= 0) {
         cmplx traceEval = Evaluate(ReplaceAll(eq, "x", "(" + CmplxToStr((traceX - 64) * scaleX) + ")"));
@@ -59,17 +59,17 @@ Render Graph(std::string eq, float scaleX = 0.125f, float scaleY = 0.125f, bool 
         coord = GenerateRender(ReplaceAll("(" + CmplxToStr((traceX - 64) * scaleX, 3) + "," + CmplxToStr(traceEval.real(), 3) + ")", "-", "~"), true);
         
         if (coord.bitmap.size() >= 63)
-            graph.bitmap[64] &= ULLONG_MAX >> 8;
+            graph.bitmap[64] &= (9223372036854775807LL*2ULL+1ULL) >> 8;
     }
 
     // Calculate values and plot
     float y = 0;
-    ull ybmap = 0, prevYbmap = 0, traceYbmap = 0;
+    ull ybmap = 0, prevYbmap = 0;
     cmplx eval = 0;
     for (sbyte i = 0; i <= 126; i++) {
         eval = Evaluate(ReplaceAll(eq, "x", "(" + CmplxToStr((i - 64) * scaleX) + ")"));
         if (std::abs(eval.imag()) > 0.001L) { 
-            std::cout << "Imaginary portion too large: " << CmplxToStr(eval) << std::endl;
+            //std::cout << "Imaginary portion too large: " << CmplxToStr(eval) << std::endl;
             prevYbmap = 0; 
             continue;  
         }
@@ -79,7 +79,6 @@ Render Graph(std::string eq, float scaleX = 0.125f, float scaleY = 0.125f, bool 
         
         if (i == traceX && !isNan(eval)) traceY = y;
         if ((i >= graph.bitmap.size() - coord.bitmap.size() - 1) && y >= 25) { prevYbmap = 0; continue; }
-
         //std::cout << "Placing coordinate (" << (int)(i - 64) << ", " << y << ")  bmap: " << ybmap << std::endl;
         MaskedOr(graph, ybmap, i, false);
         if (i > 0 && ybmap != 0)

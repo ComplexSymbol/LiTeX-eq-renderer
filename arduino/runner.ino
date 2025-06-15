@@ -3,46 +3,47 @@
 #include <string>
 #include <iomanip>
 
-#include <Evaluator.h>
-#include <LiTeX.h>
-#include <RenderEngine.h>
-#include <DisplaySPI.h>
 #include <Grapher.h>
 
-std::string equation = "x";
+std::string equation = "3\\sqrt{2}{\\frac{sin(4)}{3}}";
 
 void setup() {
-    setup_SPI();
-    delay(2000);
-    
-    std::cout.flush();
-    std::cout.precision();
-    std::cout << "INIT INIT INIT" << std::endl;
+  //setup_SPI();
+  delay(2000);
+
+  std::cout.precision();
+  Serial.begin(9600);
+
+  Serial.println("SERIAL: INIT");
+  delay(100);
 }
 
-void loop() { 
-    std::cout << "LOOP LOOP LOOP" << std::endl;
-    
-    uint start = micros();
-    Render graph = Graph(equation);
-    uint finish = micros();
-    graph.Print();
-
-    std::cout << "Generated graph in: " << (finish - start) << "µs" << std::endl;
-
-    std::cout << "Initializing display...\n" << std::endl;
-    initialize_display();
-    std::cout << "Software reset...\n" << std::endl;
-    software_reset();
-    std::cout << "Clearing display...\n" << std::endl;
-    clear_display();
-
-    std::cout << "Sending render..." << std::endl;
-    send_render(graph);
+void loop() {
+  Serial.println("SERIAL: LOOP");
+  delay(100);
   
-    delay(3000);
-    std::cout << "EXITING..." << std::endl;
-    kill_SPI();
-    exit(0);
-    return;
+  uint start = micros();
+  cmplx eval = Evaluate(equation);
+  uint finish = micros();
+
+  SerialPrintlnString("Finished Evaluating! Result:");
+  SerialPrintlnString(CmplxToStr(eval));
+
+  SerialPrintlnString("Evaluated equation in: " + std::to_string(finish - start) + "µs");
+
+  //std::cout << "Initializing display...\n" << std::endl;
+  //initialize_display();
+  //std::cout << "Software reset...\n" << std::endl;
+  //software_reset();
+  //std::cout << "Clearing display...\n" << std::endl;
+  //clear_display();
+
+  //std::cout << "Sending render..." << std::endl;
+  //send_render(graph);
+
+  delay(3000);
+  SerialPrintlnString("EXITING...");
+  //kill_SPI();
+  exit(0);
+  return;
 }
